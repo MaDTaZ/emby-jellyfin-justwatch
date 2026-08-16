@@ -5,25 +5,26 @@ using System.Threading.Tasks;
 using JustWatch.Plugin.Core;
 using MediaBrowser.Model.Services;
 
-namespace Emby.Plugin.JustWatch.Api;
-
-[Route("/JustWatch/Search", "GET", Summary = "Search JustWatch by title.")]
-public sealed class SearchJustWatch : IReturn<IReadOnlyList<JustWatchSearchResult>>
+namespace Emby.Plugin.JustWatch.Api
 {
-    public string Title { get; set; } = string.Empty;
-
-    public int? Year { get; set; }
-
-    public string? MediaType { get; set; }
-}
-
-public sealed class JustWatchService : IService
-{
-    public Task<IReadOnlyList<JustWatchSearchResult>> Get(SearchJustWatch request)
+    [Route("/JustWatch/Search", "GET", Summary = "Search JustWatch by title.")]
+    public sealed class SearchJustWatch : IReturn<IReadOnlyList<JustWatchSearchResult>>
     {
-        var options = Plugin.Instance?.Configuration.Options ?? new JustWatchOptions();
-        var client = new JustWatchClient(new HttpClient(), options);
+        public string Title { get; set; } = string.Empty;
 
-        return client.SearchAsync(request.Title, request.Year, request.MediaType, CancellationToken.None);
+        public int? Year { get; set; }
+
+        public string? MediaType { get; set; }
+    }
+
+    public sealed class JustWatchService : IService
+    {
+        public Task<IReadOnlyList<JustWatchSearchResult>> Get(SearchJustWatch request)
+        {
+            var options = Plugin.Instance?.Configuration.Options ?? new JustWatchOptions();
+            var client = new JustWatchClient(new HttpClient(), options);
+
+            return client.SearchAsync(request.Title, request.Year, request.MediaType, CancellationToken.None);
+        }
     }
 }

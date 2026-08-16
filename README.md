@@ -29,6 +29,14 @@ GET /JustWatch/Search?title=Arrival&year=2016&mediaType=movie
 
 `mediaType` can be `movie`, `series`, or omitted.
 
+## Admin page
+
+Both host plugins expose a JustWatch admin page in the server dashboard. The page lets you:
+
+- Set country, language, and result limit.
+- Search JustWatch by title, optional year, and media type.
+- Open the matched title on JustWatch.
+
 ## Notes
 
 JustWatch does not offer a stable public server-plugin API. The shared client uses the web API endpoint commonly used by JustWatch clients, so treat it as best-effort and expect that it may need updates if JustWatch changes its private API.

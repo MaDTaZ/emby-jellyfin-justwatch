@@ -1,0 +1,46 @@
+<div data-role="page" class="page type-interior pluginConfigurationPage justWatchConfigurationPage" data-require="emby-button,emby-input,emby-select" data-controller="__plugin/JustWatchConfigJs">
+  <div data-role="content">
+    <div class="content-primary">
+      <form class="justWatchSettingsForm">
+        <div class="verticalSection">
+          <h2>JustWatch</h2>
+          <div class="inputContainer">
+            <input is="emby-input" class="justWatchCountry" label="Country" maxlength="2" />
+            <div class="fieldDescription">Two-letter region code, such as US, CA, GB, or AU.</div>
+          </div>
+          <div class="inputContainer">
+            <input is="emby-input" class="justWatchLanguage" label="Language" maxlength="2" />
+            <div class="fieldDescription">Two-letter language code, such as en, fr, or es.</div>
+          </div>
+          <div class="inputContainer">
+            <input is="emby-input" class="justWatchResultLimit" label="Result limit" type="number" min="1" max="20" />
+          </div>
+          <button is="emby-button" type="submit" class="raised button-submit block">
+            <span>Save</span>
+          </button>
+        </div>
+      </form>
+
+      <div class="verticalSection">
+        <h2>Lookup</h2>
+        <div class="inputContainer">
+          <input is="emby-input" class="justWatchTitle" label="Title" />
+        </div>
+        <div class="inputContainer">
+          <input is="emby-input" class="justWatchYear" label="Year" type="number" min="1888" max="2100" />
+        </div>
+        <div class="selectContainer">
+          <select is="emby-select" class="justWatchMediaType" label="Type">
+            <option value="">Any</option>
+            <option value="movie">Movie</option>
+            <option value="series">Series</option>
+          </select>
+        </div>
+        <button is="emby-button" type="button" class="raised button-submit block justWatchSearchButton">
+          <span>Search</span>
+        </button>
+        <div class="justWatchResults" style="margin-top:1.5em;"></div>
+      </div>
+    </div>
+  </div>
+</div>

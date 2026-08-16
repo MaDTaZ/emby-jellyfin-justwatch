@@ -5,22 +5,23 @@ using System.Threading.Tasks;
 using JustWatch.Plugin.Core;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Jellyfin.Plugin.JustWatch.Api;
-
-[ApiController]
-[Route("JustWatch")]
-public sealed class JustWatchController : ControllerBase
+namespace Jellyfin.Plugin.JustWatch.Api
 {
-    [HttpGet("Search")]
-    public Task<IReadOnlyList<JustWatchSearchResult>> Search(
-        [FromQuery] string title,
-        [FromQuery] int? year,
-        [FromQuery] string? mediaType,
-        CancellationToken cancellationToken)
+    [ApiController]
+    [Route("JustWatch")]
+    public sealed class JustWatchController : ControllerBase
     {
-        var options = Plugin.Instance?.Configuration.Options ?? new JustWatchOptions();
-        var client = new JustWatchClient(new HttpClient(), options);
+        [HttpGet("Search")]
+        public Task<IReadOnlyList<JustWatchSearchResult>> Search(
+            [FromQuery] string title,
+            [FromQuery] int? year,
+            [FromQuery] string? mediaType,
+            CancellationToken cancellationToken)
+        {
+            var options = Plugin.Instance?.Configuration.Options ?? new JustWatchOptions();
+            var client = new JustWatchClient(new HttpClient(), options);
 
-        return client.SearchAsync(title, year, mediaType, cancellationToken);
+            return client.SearchAsync(title, year, mediaType, cancellationToken);
+        }
     }
 }
