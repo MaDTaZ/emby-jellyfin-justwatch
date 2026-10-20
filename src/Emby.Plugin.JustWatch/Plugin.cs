@@ -18,11 +18,11 @@ namespace Emby.Plugin.JustWatch
 
         public static Plugin? Instance { get; private set; }
 
-        public override string Name => "JustWatch";
+        public override string Name => "Where to Watch";
 
         public override Guid Id => Guid.Parse("4df372d4-8179-4f05-9312-419434bd835d");
 
-        public override string Description => "Adds JustWatch availability lookup endpoints for Emby.";
+        public override string Description => "Find streaming providers and request movies and shows through Seerr.";
 
         public IEnumerable<PluginPageInfo> GetPages()
         {
@@ -31,7 +31,7 @@ namespace Emby.Plugin.JustWatch
                 new PluginPageInfo
                 {
                     Name = "JustWatch",
-                    DisplayName = "JustWatch",
+                    DisplayName = "Where to Watch",
                     MenuIcon = "search",
                     MenuSection = "server",
                     EnableInMainMenu = true,

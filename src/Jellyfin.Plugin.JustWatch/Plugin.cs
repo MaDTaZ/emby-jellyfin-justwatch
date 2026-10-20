@@ -18,11 +18,11 @@ namespace Jellyfin.Plugin.JustWatch
 
         public static Plugin? Instance { get; private set; }
 
-        public override string Name => "JustWatch";
+        public override string Name => "Where to Watch";
 
         public override Guid Id => Guid.Parse("fd91b02d-7551-46f1-a205-2ef7607c25d8");
 
-        public override string Description => "Adds JustWatch availability lookup endpoints for Jellyfin.";
+        public override string Description => "Find streaming providers and request movies and shows through Seerr.";
 
         public IEnumerable<PluginPageInfo> GetPages()
         {
@@ -31,7 +31,7 @@ namespace Jellyfin.Plugin.JustWatch
                 new PluginPageInfo
                 {
                     Name = "JustWatch",
-                    DisplayName = "JustWatch",
+                    DisplayName = "Where to Watch",
                     MenuIcon = "search",
                     MenuSection = "server",
                     EnableInMainMenu = true,

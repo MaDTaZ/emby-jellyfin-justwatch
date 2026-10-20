@@ -1,26 +1,27 @@
 [
   {
     "guid": "fd91b02d-7551-46f1-a205-2ef7607c25d8",
-    "name": "JustWatch",
+    "name": "Where to Watch",
     "description": "Look up regional streaming, rental, and purchase offers from the server dashboard.",
     "overview": "Where to Watch: regional provider names, prices, quality, and watch links. Preview release; live server testing is pending.",
+    "imageUrl": "https://raw.githubusercontent.com/MaDTaZ/emby-jellyfin-justwatch/main/assets/where-to-watch-mascot-v1.png",
     "owner": "MaDTaZ",
     "category": "General",
     "versions": [
       {
-        "version": "0.1.6.0",
-        "changelog": "Seerr status badges, smarter request and season buttons, and movie/TV posters.",
+        "version": "0.1.7.0",
+        "changelog": "Rename the plugin to Where to Watch and add the cinema mascot to the catalog. Existing settings and repository URL are retained.",
         "targetAbi": "12.0.0.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.6/JustWatch-Jellyfin-12.0-rc7.zip",
-        "checksum": "e322072f6a250a6507386a1b1085fa75",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.7/JustWatch-Jellyfin-12.0-rc7.zip",
+        "checksum": "0b1b5c2ce430b41170893fc2f9e33743",
         "timestamp": "2026-10-20T00:00:00Z"
       },
       {
-        "version": "0.1.5.1",
-        "changelog": "Seerr status badges, smarter request and season buttons, and movie/TV posters.",
+        "version": "0.1.6.1",
+        "changelog": "Rename the plugin to Where to Watch and add the cinema mascot to the catalog. Existing settings and repository URL are retained.",
         "targetAbi": "10.10.7.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.6/JustWatch-Jellyfin-10.10.7.zip",
-        "checksum": "34f8ff1214f9fee30ce22948d1b5c951",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.7/JustWatch-Jellyfin-10.10.7.zip",
+        "checksum": "c7821246807709accdb06b2468162520",
         "timestamp": "2026-10-20T00:00:00Z"
       }
     ]

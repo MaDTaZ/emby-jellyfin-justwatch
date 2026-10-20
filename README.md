@@ -1,4 +1,4 @@
-# JustWatch Plugins for Jellyfin and Emby
+# Where to Watch for Jellyfin and Emby
 
 This repository contains a shared JustWatch lookup library plus thin host plugins for Jellyfin and Emby.
 
@@ -14,7 +14,7 @@ For Jellyfin 10.10.7 or 12.0-rc7, go to Dashboard → Plugins → Repositories, 
 https://raw.githubusercontent.com/MaDTaZ/emby-jellyfin-justwatch/main/manifest.json
 ```
 
-Refresh the plugin catalog, install **JustWatch**, then restart Jellyfin. The feed includes separate builds: 0.1.5.1 for Jellyfin 10.10.7 and 0.1.6.0 for Jellyfin 12.0-rc7. The 12.0 build targets .NET 10 and the exact 12.0.0-rc7 SDK. Other server generations need matching builds. Repository and package downloads are verified separately from live server installation, which still needs testing.
+Refresh the plugin catalog, install **Where to Watch**, then restart Jellyfin. The feed includes separate builds: 0.1.6.1 for Jellyfin 10.10.7 and 0.1.7.0 for Jellyfin 12.0-rc7. The 12.0 build targets .NET 10 and the exact 12.0.0-rc7 SDK. Other server generations need matching builds. Repository and package downloads are verified separately from live server installation, which still needs testing.
 
 ### Emby stable and beta
 
@@ -63,7 +63,7 @@ Save country and language settings before searching. Lookup uses the saved serve
 
 ## Install a build
 
-Build in Release mode. For Jellyfin, create a JustWatch folder inside the server plugin directory and copy the Jellyfin plugin DLL plus `JustWatch.Plugin.Core.dll` from its build output. For Emby, copy both DLLs directly into the plugins directory. Do not copy Jellyfin/Emby host assemblies. Restart the server, open the JustWatch dashboard page, save your region, and search. Keep separate installation folders for the two server builds. Runtime installation and dashboard loading still need verification on a real server.
+Build in Release mode. For Jellyfin, create a JustWatch folder inside the server plugin directory and copy the Jellyfin plugin DLL plus `JustWatch.Plugin.Core.dll` from its build output. For Emby, copy both DLLs directly into the plugins directory. Do not copy Jellyfin/Emby host assemblies. Restart the server, open the Where to Watch dashboard page, save your region, and search. Keep separate installation folders for the two server builds. Runtime installation and dashboard loading still need verification on a real server.
 
 ## Verification
 
@@ -89,13 +89,13 @@ The default build keeps SDK 4.8.10. To build against a different published SDK, 
 
 ## Release packaging
 
-Current Emby and Jellyfin 12 assemblies use version 0.1.6.0; Jellyfin 10.10.7 uses 0.1.5.1 so newer servers select the .NET 10 build. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
+Current Emby and Jellyfin 12 assemblies use version 0.1.7.0; Jellyfin 10.10.7 uses 0.1.6.1 so newer servers select the .NET 10 build. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
 
 ```bash
 python3 scripts/package-release.py
 ```
 
-This creates four flat ZIP archives, SHA-256 checksums, and a Jellyfin manifest containing the ZIP's MD5 checksum as required by Jellyfin. Upload the archives to release `v0.1.6` and commit the matching manifest. Update the script's version, tag, and timestamp for later releases.
+This creates four flat ZIP archives, SHA-256 checksums, and a Jellyfin manifest containing the ZIP's MD5 checksum as required by Jellyfin. Upload the archives to release `v0.1.7` and commit the matching manifest. Update the script's version, tag, and timestamp for later releases.
 
 ## 0.1.1 dashboard fix
 
@@ -145,3 +145,7 @@ When a Seerr API key is configured, results check Seerr in the background (at mo
 Posters come from JustWatch, load lazily, and have a fallback when missing or broken. Status lookups never submit requests automatically. The existing Seerr URL and API key settings are retained.
 
 Validation: 22 dashboard tests and expanded shared-client checks cover status labels, disabled movie requests, partially available TV seasons, unknown status, and poster URLs/fallbacks. All four builds pass. An isolated running Jellyfin 12.0-rc7 server with simulated Seerr responses verified each non-requestable movie state and new-season availability; a live JustWatch search verified a poster URL. The browser preview uses a real poster and simulated Seerr availability. No requests were submitted to the user's real Seerr server.
+
+## Where to Watch rename (0.1.7)
+
+The displayed plugin name and dashboard label are now **Where to Watch**. The catalog uses the approved cinema mascot. Plugin GUIDs, assembly names, internal configuration page identifiers, routes, and repository URL stay unchanged so existing installs update in place and keep their configuration, including Seerr settings. Older filenames and internal identifiers still use JustWatch for compatibility. Jellyfin 12 uses 0.1.7.0; Jellyfin 10.10.7 uses 0.1.6.1.

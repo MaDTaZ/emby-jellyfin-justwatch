@@ -29,7 +29,7 @@ define([], function () {
             Dashboard.hideLoadingMsg();
         }).catch(function () {
             Dashboard.hideLoadingMsg();
-            Dashboard.alert('Could not load JustWatch settings.');
+            Dashboard.alert('Could not load Where to Watch settings.');
         });
     }
 
@@ -49,7 +49,7 @@ define([], function () {
             Dashboard.processPluginConfigurationUpdateResult(result);
         }).catch(function () {
             Dashboard.hideLoadingMsg();
-            Dashboard.alert('Could not save JustWatch settings.');
+            Dashboard.alert('Could not save Where to Watch settings.');
         });
     }
 
