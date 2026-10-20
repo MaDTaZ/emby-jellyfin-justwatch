@@ -149,3 +149,7 @@ Validation: 22 dashboard tests and expanded shared-client checks cover status la
 ## Where to Watch rename (0.1.7)
 
 The displayed plugin name and dashboard label are now **Where to Watch**. The catalog uses the approved cinema mascot. Plugin GUIDs, assembly names, internal configuration page identifiers, routes, and repository URL stay unchanged so existing installs update in place and keep their configuration, including Seerr settings. Older filenames and internal identifiers still use JustWatch for compatibility. Jellyfin 12 uses 0.1.7.0; Jellyfin 10.10.7 uses 0.1.6.1.
+
+## Search-first layout (0.1.8)
+
+Search now appears first, with title, optional year, type, and Search arranged in a compact responsive row on desktop and stacked on smaller screens. Region, language, and Seerr settings are inside a keyboard-accessible Settings disclosure below results, collapsed by default. Existing settings are retained. Jellyfin 12 uses 0.1.8.0; Jellyfin 10.10.7 uses 0.1.7.1.

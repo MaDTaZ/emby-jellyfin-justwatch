@@ -9,19 +9,19 @@
     "category": "General",
     "versions": [
       {
-        "version": "0.1.7.0",
-        "changelog": "Rename the plugin to Where to Watch and add the cinema mascot to the catalog. Existing settings and repository URL are retained.",
+        "version": "0.1.8.0",
+        "changelog": "Put search first with a responsive compact layout, and move settings into a collapsed panel below results. Existing region and Seerr settings are retained.",
         "targetAbi": "12.0.0.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.7/JustWatch-Jellyfin-12.0-rc7.zip",
-        "checksum": "0b1b5c2ce430b41170893fc2f9e33743",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.8/JustWatch-Jellyfin-12.0-rc7.zip",
+        "checksum": "a29cb47bbfa05068432222487d8285a5",
         "timestamp": "2026-10-20T00:00:00Z"
       },
       {
-        "version": "0.1.6.1",
-        "changelog": "Rename the plugin to Where to Watch and add the cinema mascot to the catalog. Existing settings and repository URL are retained.",
+        "version": "0.1.7.1",
+        "changelog": "Put search first with a responsive compact layout, and move settings into a collapsed panel below results. Existing region and Seerr settings are retained.",
         "targetAbi": "10.10.7.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.7/JustWatch-Jellyfin-10.10.7.zip",
-        "checksum": "c7821246807709accdb06b2468162520",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.8/JustWatch-Jellyfin-10.10.7.zip",
+        "checksum": "02fcd3d2383d1249a11fa000c82bee79",
         "timestamp": "2026-10-20T00:00:00Z"
       }
     ]

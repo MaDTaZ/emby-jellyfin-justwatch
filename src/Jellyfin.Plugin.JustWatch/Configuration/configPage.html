@@ -50,13 +50,66 @@
 .justWatchConfigurationPage .jw-seerr-status[data-state="requested"], .justWatchConfigurationPage .jw-seerr-status[data-state="partial"] { color: #70c6e3; background: rgba(0,164,220,.12); }
 .justWatchConfigurationPage .jw-seerr-status[data-state="blocked"] { color: #ef9a9a; background: rgba(225,90,90,.12); }
 .justWatchConfigurationPage .jw-season:has(input:disabled) { opacity: .55; }
+
+.justWatchConfigurationPage .content-primary { max-width: 1180px; margin: 0 auto; }
+.justWatchConfigurationPage .jw-page-heading { margin-bottom: 28px; }
+.justWatchConfigurationPage .jw-page-heading h2 { margin-bottom: 8px; font-size: 2em; }
+.justWatchConfigurationPage .jw-intro { opacity: .7; line-height: 1.6; }
+.justWatchConfigurationPage .jw-search-section > h3 { font-size: 1.1em; margin-bottom: 24px; }
+.justWatchConfigurationPage .jw-search-grid { display: grid; grid-template-columns: minmax(200px, 1fr) 140px 160px auto; align-items: start; gap: 18px; }
+.justWatchConfigurationPage .jw-search-grid > div { min-width: 0; margin-bottom: 0; }
+.justWatchConfigurationPage .jw-search-grid > button { margin: 25px 0 0; min-height: 40px; padding-inline: 28px; width: auto; }
+.justWatchConfigurationPage .jw-settings { margin: 30px 0; border: 1px solid rgba(140,150,165,.22); border-radius: 12px; background: rgba(130,140,155,.04); }
+.justWatchConfigurationPage .jw-settings > summary { padding: 18px 22px; cursor: pointer; font-weight: 600; }
+.justWatchConfigurationPage .jw-settings > summary span { margin-left: 12px; font-weight: 400; font-size: .85em; opacity: .6; }
+.justWatchConfigurationPage .jw-settings > summary:focus-visible { outline: 2px solid #00a4dc; outline-offset: 3px; }
+.justWatchConfigurationPage .justWatchSettingsForm { padding: 0 22px 22px; max-width: 740px; }
+.justWatchConfigurationPage .justWatchSettingsForm .verticalSection { margin: 0; }
+.justWatchConfigurationPage .jw-result { max-width: none; }
+@media(max-width: 800px) {
+.justWatchConfigurationPage .jw-search-grid { grid-template-columns: 1fr 1fr; }
+.justWatchConfigurationPage .jw-search-grid > :first-child { grid-column: 1 / -1; }
+.justWatchConfigurationPage .jw-search-grid > button { grid-column: 1 / -1; margin-top: 0; }
+}
+@media(max-width: 420px) {
+.justWatchConfigurationPage .jw-settings > summary span { display: block; margin: 6px 0 0; }
+}
 </style>
 
   <div data-role="content">
     <div class="content-primary">
+      <header class="jw-page-heading">
+        <h2>Where to Watch</h2>
+        <p class="jw-intro">Find your next movie or series, see where it streams, and request it with Seerr.</p>
+      </header>
+
+      <div class="verticalSection jw-search-section">
+        <h3>Find something to watch</h3>
+        <div class="jw-search-grid">
+        <div class="inputContainer">
+          <input is="emby-input" class="justWatchTitle" label="Movie or series" placeholder="Search by title" />
+        </div>
+        <div class="inputContainer">
+          <input is="emby-input" class="justWatchYear" label="Year (optional)" type="number" min="1888" max="2100" />
+        </div>
+        <div class="selectContainer">
+          <select is="emby-select" class="justWatchMediaType" label="Type">
+            <option value="">Any</option>
+            <option value="movie">Movie</option>
+            <option value="series">Series</option>
+          </select>
+        </div>
+        <button is="emby-button" type="button" class="raised button-submit block justWatchSearchButton">
+          <span>Search</span>
+        </button>
+        </div>
+        <div class="justWatchResults" role="status" aria-live="polite" style="margin-top:1.5em;"></div>
+      </div>
+      <details class="jw-settings">
+        <summary>Settings <span>Region, language &amp; Seerr</span></summary>
       <form class="justWatchSettingsForm">
         <div class="verticalSection">
-          <h2>Where to Watch</h2><p>Choose your region, save settings, then search for a movie or series.</p>
+          <p class="jw-intro">Set your region and connect Seerr for direct requests.</p>
           <div class="inputContainer">
             <input is="emby-input" class="justWatchCountry" label="Country" maxlength="2" minlength="2" pattern="[A-Za-z]{2}" required />
             <div class="fieldDescription">Two-letter region code, such as US, CA, GB, or AU.</div>
@@ -77,31 +130,11 @@
             <div class="fieldDescription">Enable direct requests without a Seerr login. Requests use the API key account and its approval settings. Only server administrators can send direct requests.</div>
           </div>
           <button is="emby-button" type="submit" class="raised button-submit block">
-            <span>Save</span>
+            <span>Save settings</span>
           </button>
         </div>
       </form>
-
-      <div class="verticalSection">
-        <h2>Lookup</h2>
-        <div class="inputContainer">
-          <input is="emby-input" class="justWatchTitle" label="Title" />
-        </div>
-        <div class="inputContainer">
-          <input is="emby-input" class="justWatchYear" label="Year" type="number" min="1888" max="2100" />
-        </div>
-        <div class="selectContainer">
-          <select is="emby-select" class="justWatchMediaType" label="Type">
-            <option value="">Any</option>
-            <option value="movie">Movie</option>
-            <option value="series">Series</option>
-          </select>
-        </div>
-        <button is="emby-button" type="button" class="raised button-submit block justWatchSearchButton">
-          <span>Search</span>
-        </button>
-        <div class="justWatchResults" role="status" aria-live="polite" style="margin-top:1.5em;"></div>
-      </div>
+      </details>
     </div>
   </div>
   <script type="text/javascript">
