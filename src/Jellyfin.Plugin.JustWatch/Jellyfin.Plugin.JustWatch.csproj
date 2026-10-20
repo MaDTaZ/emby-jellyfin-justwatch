@@ -1,16 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <JellyfinSdkVersion Condition="'$(JellyfinSdkVersion)' == ''">10.10.7</JellyfinSdkVersion>
+    <JellyfinTargetFramework Condition="'$(JellyfinTargetFramework)' == ''">net8.0</JellyfinTargetFramework>
+    <TargetFramework>$(JellyfinTargetFramework)</TargetFramework>
     <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>
     <AssemblyName>Jellyfin.Plugin.JustWatch</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\JustWatch.Plugin.Core\JustWatch.Plugin.Core.csproj" />
-    <PackageReference Include="Jellyfin.Controller" Version="10.10.7">
+    <PackageReference Include="Jellyfin.Controller" Version="$(JellyfinSdkVersion)">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Jellyfin.Model" Version="10.10.7">
+    <PackageReference Include="Jellyfin.Model" Version="$(JellyfinSdkVersion)">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
   </ItemGroup>

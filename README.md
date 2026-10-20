@@ -4,17 +4,17 @@ This repository contains a shared JustWatch lookup library plus thin host plugin
 
 ## Downloads and installation
 
-Preview builds: [GitHub Releases](https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/tag/v0.1.1).
+Preview builds: [GitHub Releases](https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases).
 
 ### Jellyfin repository
 
-For Jellyfin 10.10.7, go to Dashboard → Plugins → Repositories, add a repository named **MaDTaZ JustWatch**, and use:
+For Jellyfin 10.10.7 or 12.0-rc7, go to Dashboard → Plugins → Repositories, add a repository named **MaDTaZ JustWatch**, and use:
 
 ```text
 https://raw.githubusercontent.com/MaDTaZ/emby-jellyfin-justwatch/main/manifest.json
 ```
 
-Refresh the plugin catalog, install **JustWatch**, then restart Jellyfin. This package targets the 10.10 server line; other server generations need their own builds. Repository and package downloads are verified separately from live server installation, which still needs testing.
+Refresh the plugin catalog, install **JustWatch**, then restart Jellyfin. The feed includes separate builds: 0.1.1.0 for Jellyfin 10.10.7 and 0.1.2.0 for Jellyfin 12.0-rc7. The 12.0 build targets .NET 10 and the exact 12.0.0-rc7 SDK. Other server generations need matching builds. Repository and package downloads are verified separately from live server installation, which still needs testing.
 
 ### Emby stable and beta
 
@@ -102,3 +102,18 @@ This creates three flat ZIP archives, SHA-256 checksums, and a Jellyfin manifest
 Jellyfin now initializes its controls with an inline script in the configuration HTML, following Jellyfin's plugin template. The previous Emby-style external controller left the settings and Search controls unbound in Jellyfin. The save response is now forwarded to the dashboard's confirmation handler on both hosts.
 
 Eight dashboard checks pass, including initialization from the actual Jellyfin HTML and settings submission. A local browser check with simulated server responses verifies default settings, Save, and Search. A live Jellyfin server test is still pending. After upgrading from 0.1.0, restart Jellyfin and hard-refresh the configuration page to clear the old page.
+
+## Jellyfin 12.0-rc7 build
+
+This server release uses .NET 10. The original 10.10.7 plugin is not the build to use on 12.0-rc7. With the .NET 10 SDK installed, build and package the matching version:
+
+```bash
+dotnet build src/Jellyfin.Plugin.JustWatch/Jellyfin.Plugin.JustWatch.csproj -c Release -p:JellyfinSdkVersion=12.0.0-rc7 -p:JellyfinTargetFramework=net10.0 -p:Version=0.1.2 -p:AssemblyVersion=0.1.2.0 -p:FileVersion=0.1.2.0 -o artifacts/jellyfin-12.0-rc7
+python3 scripts/package-jellyfin12.py
+```
+
+The manifest URL stays unchanged. The 12.0 entry has a higher plugin version and `targetAbi` 12.0.0.0, so 10.10 servers filter it out while 12.0 servers select it. Do not run the older `package-release.py` to publish a 12.0 update: that older script packages the 0.1.1 release. It is retained for reproducing that release.
+
+### Jellyfin 12.0-rc7 integration verification
+
+The 0.1.2.0 build was loaded into the official portable Jellyfin 12.0-rc7 server with isolated temporary data and a loopback-only port. The server completed startup and logged JustWatch 0.1.2.0 as loaded. Authenticated API checks saved Canadian configuration, reloaded it successfully, and performed a live Arrival (2016) search returning a title. The test server also fetched the original repository URL through its own package catalog endpoint. These checks exercise the running server in addition to the eight dashboard tests; they do not imply every server platform or web client has been tested.
