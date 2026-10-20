@@ -31,7 +31,7 @@ manifest = [{
     'name': 'Where to Watch',
     'description': 'Look up regional streaming, rental, and purchase offers from the server dashboard.',
     'overview': 'Where to Watch: regional provider names, prices, quality, and watch links. Preview release; live server testing is pending.',
-    'imageUrl': f'https://raw.githubusercontent.com/MaDTaZ/emby-jellyfin-justwatch/main/assets/where-to-watch-mascot-banner-v2.png',
+    'imageUrl': f'https://raw.githubusercontent.com/MaDTaZ/emby-jellyfin-justwatch/main/assets/where-to-watch-title-banner-v3.png',
     'owner': 'MaDTaZ',
     'category': 'General',
     'versions': [
