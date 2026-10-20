@@ -4,6 +4,8 @@ namespace JustWatch.Plugin.Core
     {
         public string Country { get; set; } = "US";
 
+        public string AnywhereCountries { get; set; } = "CA,US,GB,AU";
+
         public string Language { get; set; } = "en";
 
         public int ResultLimit { get; set; } = 8;

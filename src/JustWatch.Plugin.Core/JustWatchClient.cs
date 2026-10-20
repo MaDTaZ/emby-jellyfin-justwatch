@@ -71,6 +71,32 @@ namespace JustWatch.Plugin.Core
                 .ToList();
         }
 
+        public async Task<IReadOnlyList<JustWatchSearchResult>> SearchAcrossCountriesAsync(
+            string title, int? year, string? mediaType, CancellationToken cancellationToken)
+        {
+            var countries = (_options.AnywhereCountries ?? string.Empty).Split(',')
+                .Select(value => value.Trim().ToUpperInvariant()).Distinct().ToArray();
+            if (countries.Length < 1 || countries.Length > 6 || countries.Any(value => !IsCode(value)))
+                throw new ArgumentException("Choose one to six comma-separated two-letter country codes for Anywhere.");
+
+            var results = new List<JustWatchSearchResult>();
+            // Bound concurrency and retain separate country results, prices, and watch links.
+            for (var index = 0; index < countries.Length; index += 2)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var batch = countries.Skip(index).Take(2).Select(country =>
+                    new JustWatchClient(_httpClient, new JustWatchOptions
+                    {
+                        Country = country, Language = _options.Language, ResultLimit = _options.ResultLimit,
+                        BaseUrl = _options.BaseUrl, SeerrUrl = _options.SeerrUrl, SeerrApiKey = _options.SeerrApiKey
+                    }).SearchAsync(title, year, mediaType, cancellationToken));
+                // A failed country fails the search rather than presenting incomplete coverage as complete.
+                var responses = await Task.WhenAll(batch).ConfigureAwait(false);
+                foreach (var response in responses) results.AddRange(response);
+            }
+            return results;
+        }
+
         private const string SearchQuery = @"
 query WhereToWatch($country: Country!, $language: Language!, $first: Int!, $filter: TitleFilter!) {
   popularTitles(country: $country, filter: $filter, first: $first, sortBy: POPULAR, sortRandomSeed: 0) {

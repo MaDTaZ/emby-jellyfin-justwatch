@@ -25,6 +25,20 @@ using (var request = JsonDocument.Parse(handler.Request!))
 {
     Check(request.RootElement.GetProperty("variables").GetProperty("filter").GetProperty("objectTypes")[0].GetString() == "MOVIE", "movie filter");
 }
+var anywhereClient = new JustWatchClient(http, new JustWatchOptions { AnywhereCountries = "ca,US,ca,gb", SeerrUrl = "https://seerr.example.com", SeerrApiKey = "test-key" });
+handler.Countries.Clear();
+var anywhere = await anywhereClient.SearchAcrossCountriesAsync("Arrival", 2016, "movie", default);
+Check(string.Join(",", anywhere.Select(result => result.Country)) == "CA,US,GB", "Anywhere retains distinct normalized country results in chosen order");
+Check(handler.Countries.OrderBy(value => value).SequenceEqual(new[]{"CA","GB","US"}), "one request per distinct chosen country");
+Check(anywhere.All(result => result.Offers[0].Currency == "CAD" && result.CanRequestInSeerr), "Anywhere preserves upstream currencies and Seerr integration");
+try {
+    await new JustWatchClient(http, new JustWatchOptions { AnywhereCountries = "USA" }).SearchAcrossCountriesAsync("Arrival", null, null, default);
+    throw new Exception("Expected invalid country rejection");
+} catch (ArgumentException) { }
+try {
+    await new JustWatchClient(http, new JustWatchOptions { AnywhereCountries = "CA,US,GB,AU,FR,DE,IT" }).SearchAcrossCountriesAsync("Arrival", null, null, default);
+    throw new Exception("Expected country limit rejection");
+} catch (ArgumentException) { }
 Check((await client.SearchAsync("Arrival", 1990, "movie", default)).Count == 0, "year mismatch");
 Check((await client.SearchAsync(" ", null, null, default)).Count == 0, "blank title");
 handler.Body = "{\"errors\":[{\"message\":\"failed\"}]}";
@@ -32,6 +46,15 @@ await ExpectFailure(() => client.SearchAsync("Arrival", null, null, default));
 handler.Body = "{}";
 await ExpectFailure(() => client.SearchAsync("Arrival", null, null, default));
 await SeerrSmoke.Run();
+if (args.Contains("--live"))
+{
+    using var liveHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+    var live = await new JustWatchClient(liveHttp, new JustWatchOptions { AnywhereCountries = "CA,US", ResultLimit = 2 })
+        .SearchAcrossCountriesAsync("Arrival", 2016, "movie", default);
+    Check(live.Any(result => result.Country == "CA") && live.Any(result => result.Country == "US"), "live CA and US results");
+    Check(live.All(result => result.TmdbId > 0), "live matched TMDB IDs");
+    Console.WriteLine("Live Anywhere CA/US search passed: " + live.Count + " country-labeled results.");
+}
 Console.WriteLine("Shared client and direct Seerr request checks passed.");
 static void Check(bool condition, string name) { if (!condition) throw new Exception(name); }
 static async Task ExpectFailure(Func<Task<IReadOnlyList<JustWatchSearchResult>>> action)
@@ -43,9 +66,12 @@ sealed class StubHandler : HttpMessageHandler
 {
     public string Body = "{}";
     public string? Request;
+    public System.Collections.Concurrent.ConcurrentBag<string> Countries = new();
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
     {
         Request = await request.Content!.ReadAsStringAsync(token);
+        using var document = JsonDocument.Parse(Request);
+        Countries.Add(document.RootElement.GetProperty("variables").GetProperty("country").GetString()!);
         return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Body, Encoding.UTF8, "application/json") };
     }
 }

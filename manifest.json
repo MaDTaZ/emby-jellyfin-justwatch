@@ -9,19 +9,19 @@
     "category": "General",
     "versions": [
       {
-        "version": "0.1.9.0",
-        "changelog": "Filter offers by provider with remembered browser preferences and an All providers reset. Seerr request controls remain available when selected services have no offers.",
+        "version": "0.1.10.0",
+        "changelog": "Add Anywhere search across one to six chosen countries, with country-specific results and currency labels. Configure the countries in Settings; your existing region and Seerr settings are retained.",
         "targetAbi": "12.0.0.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.9/JustWatch-Jellyfin-12.0-rc7.zip",
-        "checksum": "536f173a93a4d77c6bb82b3406952961",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.10/JustWatch-Jellyfin-12.0-rc7.zip",
+        "checksum": "9c6f5315ac604e42d08316b350206c99",
         "timestamp": "2026-10-20T00:00:00Z"
       },
       {
-        "version": "0.1.8.1",
-        "changelog": "Filter offers by provider with remembered browser preferences and an All providers reset. Seerr request controls remain available when selected services have no offers.",
+        "version": "0.1.9.1",
+        "changelog": "Add Anywhere search across one to six chosen countries, with country-specific results and currency labels. Configure the countries in Settings; your existing region and Seerr settings are retained.",
         "targetAbi": "10.10.7.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.9/JustWatch-Jellyfin-10.10.7.zip",
-        "checksum": "de487e3eebe3f2967df1d673ccd77799",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.10/JustWatch-Jellyfin-10.10.7.zip",
+        "checksum": "ea3540cfca7e871cd5937b4dd45713bf",
         "timestamp": "2026-10-20T00:00:00Z"
       }
     ]

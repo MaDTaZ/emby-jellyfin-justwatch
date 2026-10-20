@@ -22,6 +22,8 @@ define([], function () {
         ApiClient.getPluginConfiguration(pluginId).then(function (config) {
             config.Options = config.Options || {};
             query(page, '.justWatchCountry').value = config.Options.Country || 'US';
+            query(page, '.justWatchAnywhereCountries').value = config.Options.AnywhereCountries || 'CA,US,GB,AU';
+            query(page, '.justWatchSearchScope').options[0].textContent = 'My country (' + (config.Options.Country || 'US') + ')';
             query(page, '.justWatchSeerrApiKey').value = config.Options.SeerrApiKey || '';
             query(page, '.justWatchSeerrUrl').value = config.Options.SeerrUrl || '';
             query(page, '.justWatchLanguage').value = config.Options.Language || 'en';
@@ -34,10 +36,17 @@ define([], function () {
     }
 
     function saveConfig(page) {
+        const countries = Array.from(new Set(query(page, '.justWatchAnywhereCountries').value.toUpperCase().split(',').map(function (value) { return value.trim(); })));
+        if (countries.length > 6 || countries.some(function (value) { return !/^[A-Z]{2}$/.test(value); })) {
+            Dashboard.alert('Choose one to six comma-separated two-letter country codes for Anywhere, such as CA,US,GB,AU.');
+            return;
+        }
         Dashboard.showLoadingMsg();
         ApiClient.getPluginConfiguration(pluginId).then(function (config) {
             config.Options = config.Options || {};
             config.Options.Country = query(page, '.justWatchCountry').value.trim().toUpperCase() || 'US';
+            config.Options.AnywhereCountries = countries.join(',');
+            query(page, '.justWatchSearchScope').options[0].textContent = 'My country (' + config.Options.Country + ')';
             config.Options.Language = query(page, '.justWatchLanguage').value.trim().toLowerCase() || 'en';
             config.Options.SeerrApiKey = query(page, '.justWatchSeerrApiKey').value.trim();
             config.Options.SeerrUrl = query(page, '.justWatchSeerrUrl').value.trim();
@@ -200,8 +209,8 @@ define([], function () {
                 const provider = providers.get(key);
                 const href = safeUrl(offer.url);
                 // Merge qualities only when both price and destination match.
-                const variantKey = JSON.stringify([offer.price || '', href]);
-                if (!provider.variants.has(variantKey)) provider.variants.set(variantKey, { price: offer.price, href: href, qualities: new Set() });
+                const variantKey = JSON.stringify([offer.price || '', offer.currency || '', href]);
+                if (!provider.variants.has(variantKey)) provider.variants.set(variantKey, { price: offer.price, currency: offer.currency, href: href, qualities: new Set() });
                 if (quality) provider.variants.get(variantKey).qualities.add(quality);
             });
             const offers = categories.filter(function (label) { return groups.has(label); }).map(function (label) {
@@ -216,7 +225,7 @@ define([], function () {
                                     return ['4K', 'HD', 'SD'].indexOf(a) - ['4K', 'HD', 'SD'].indexOf(b);
                                 });
                                 const content = '<span class="jw-quality">' + escapeHtml(qualities.join(' / ') || 'View offer') + '</span>'
-                                    + '<span class="jw-price">' + escapeHtml(variant.price || 'Watch')
+                                    + '<span class="jw-price">' + escapeHtml(variant.price ? variant.price + (variant.currency ? ' · ' + variant.currency : '') : 'Watch')
                                     + (variant.href ? ' <span aria-hidden="true">↗</span>' : '') + '</span>';
                                 return variant.href ? '<a class="jw-offer" target="_blank" rel="noopener noreferrer" aria-label="'
                                     + escapeHtml(provider.name + ', ' + label + ', ' + (variant.price || 'view offer') + ', ' + qualities.join(' / '))
@@ -319,12 +328,13 @@ define([], function () {
         const url = ApiClient.getUrl('JustWatch/Search', {
             title: title,
             year: year || null,
-            mediaType: mediaType || null
+            mediaType: mediaType || null,
+            anywhere: query(page, '.justWatchSearchScope').value === 'anywhere'
         });
 
         query(page, '.justWatchProviderFilters').innerHTML = '';
         query(page, '.justWatchSearchButton').disabled = true;
-        query(page, '.justWatchResults').innerHTML = '<p>Checking availability…</p>';
+        query(page, '.justWatchResults').innerHTML = '<p>' + (query(page, '.justWatchSearchScope').value === 'anywhere' ? 'Checking your chosen countries…' : 'Checking availability…') + '</p>';
         Dashboard.showLoadingMsg();
         ApiClient.ajax({ type: 'GET', url: url, dataType: 'json' }).then(function (results) {
             query(page, '.justWatchSearchButton').disabled = false;

@@ -157,3 +157,7 @@ Search now appears first, with title, optional year, type, and Search arranged i
 ## Provider filters (0.1.9)
 
 Search results show selectable provider chips. Select one or more services to narrow offers; All providers clears the filter. Choices are remembered in this browser when local storage is available. Saved selections remain selectable even when absent from the next search. Titles and Seerr actions remain visible when no offers match. Filtering updates offer visibility and provider counts without reloading results or resetting season/request controls. Jellyfin 12 uses 0.1.9.0; Jellyfin 10.10.7 uses 0.1.8.1.
+
+## Anywhere across chosen countries (0.1.10)
+
+Search region now offers My country and Anywhere (chosen countries). Configure Anywhere countries in Settings as one to six comma-separated two-letter codes; the default is CA,US,GB,AU. Anywhere searches only this list, at most two countries concurrently. Each country retains separate title results, regional links and prices; currency codes are shown beside prices. Result limit applies per country. A failed country fails the search rather than silently displaying incomplete coverage. My country remains the default, and existing settings are retained. Jellyfin 12 uses 0.1.10.0; Jellyfin 10.10.7 uses 0.1.9.1.

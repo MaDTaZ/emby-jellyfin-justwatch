@@ -18,7 +18,7 @@ async function render(host, results, fail = false, details = {State: "notRequest
         querySelector(selector) {
             if (!elements.has(selector)) elements.set(selector, {
                 value: selector === '.justWatchTitle' ? 'Arrival' : '',
-                innerHTML: '', textContent: '', disabled: false,
+                innerHTML: '', textContent: '', disabled: false, options: [{textContent:''}],
                 querySelectorAll: selector => selector === '.jw-direct-request' ? cards.map(c => c.button) : [],
                 addEventListener(type, handler) { events[selector + type] = handler; }
             });
@@ -60,6 +60,20 @@ async function render(host, results, fail = false, details = {State: "notRequest
     return { result: elements.get('.justWatchResults'), button: elements.get('.justWatchSearchButton'), elements, events, calls, page, cards };
 }
 for (const host of ['Emby', 'Jellyfin']) {
+    test(`${host}: Anywhere is explicit, passes scope, labels countries and currencies`, async () => {
+        const { elements, events, calls, result } = await render(host, [{Title:'Arrival', Country:'CA', Offers:[{ProviderName:'Example',Price:'$4.99',Currency:'CAD'}]}]);
+        assert.equal(calls.searches[0].anywhere, false);
+        elements.get('.justWatchSearchScope').value = 'anywhere';
+        events['.justWatchSearchButtonclick']();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(calls.searches.at(-1).anywhere, true);
+        assert.match(result.innerHTML, /Availability in CA/);
+        assert.match(result.innerHTML, /4.99 · CAD/);
+        elements.get('.justWatchAnywhereCountries').value = 'USA';
+        events['.justWatchSettingsFormsubmit']({preventDefault(){}});
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(calls.updates.length, 0, 'invalid country list must not save');
+    });
     test(`${host}: provider filters hide unrelated offers, preserve title actions, and reset`, async () => {
         const { elements, events, calls, page } = await render(host, [{Title:'Arrival', Offers:[
             {ProviderId:1, ProviderName:'Netflix', MonetizationType:'FLATRATE'},
@@ -96,6 +110,9 @@ for (const host of ['Emby', 'Jellyfin']) {
         assert.equal(elements.get('.justWatchCountry').value, 'US');
         assert.equal(elements.get('.justWatchLanguage').value, 'en');
         assert.equal(elements.get('.justWatchResultLimit').value, 8);
+        assert.equal(elements.get('.justWatchAnywhereCountries').value, 'CA,US,GB,AU');
+        assert.equal(elements.get('.justWatchSearchScope').options[0].textContent, 'My country (US)');
+        elements.get('.justWatchAnywhereCountries').value = 'ca, US,ca,gb';
         elements.get('.justWatchSeerrApiKey').value = 'test-key';
         elements.get('.justWatchSeerrUrl').value = 'https://seerr.example.com';
         elements.get('.justWatchCountry').value = 'ca';
@@ -109,6 +126,7 @@ for (const host of ['Emby', 'Jellyfin']) {
         assert.equal(calls.updates[0].Options.SeerrApiKey, 'test-key');
         assert.equal(calls.updates[0].Options.SeerrUrl, 'https://seerr.example.com');
         assert.equal(calls.updates[0].Options.Country, 'CA');
+        assert.equal(calls.updates[0].Options.AnywhereCountries, 'CA,US,GB');
         assert.equal(calls.updates[0].Options.Language, 'en');
         assert.equal(calls.updates[0].Options.ResultLimit, 12);
         assert.equal(calls.confirmations[0].status, 204);
