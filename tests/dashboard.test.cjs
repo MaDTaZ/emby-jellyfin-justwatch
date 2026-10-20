@@ -79,6 +79,21 @@ for (const host of ['Emby', 'Jellyfin']) {
             assert.equal(button.disabled, false);
         }
     });
+    test(`${host}: groups provider qualities while preserving different prices and destinations`, async () => {
+        const offers = [
+            { ProviderId: '1', ProviderName: 'Example', MonetizationType: 'RENT', Price: '$3.99', Quality: 'SD', Url: 'https://example.com/rent' },
+            { ProviderId: '1', ProviderName: 'Example', MonetizationType: 'RENT', Price: '$3.99', Quality: 'HD', Url: 'https://example.com/rent' },
+            { ProviderId: '1', ProviderName: 'Example', MonetizationType: 'RENT', Price: '$5.99', Quality: '_4K', Url: 'https://example.com/4k' },
+            { ProviderId: '2', ProviderName: 'Disc shop', MonetizationType: 'BUY', Price: '$8.99', Quality: 'DVD', Url: 'https://example.com/disc' }
+        ];
+        const { result } = await render(host, [{ Title: 'Example', Offers: offers }]);
+        assert.equal((result.innerHTML.match(/class="jw-provider"/g) || []).length, 2);
+        assert.equal((result.innerHTML.match(/class="jw-offer"/g) || []).length, 3);
+        assert.match(result.innerHTML, /HD \/ SD/);
+        assert.match(result.innerHTML, /\$5.99/);
+        assert.match(result.innerHTML, /https:\/\/example.com\/4k/);
+        assert.match(result.innerHTML, /Disc &amp; Blu-ray/);
+    });
     test(`${host}: escapes titles and rejects script links`, async () => {
         const { result } = await render(host, [{ Title: '<script>alert(1)</script>', JustWatchUrl: 'javascript:alert(1)', Offers: [{ProviderName: '<img onerror=x>', Url: 'javascript:alert(1)'}] }]);
         assert.doesNotMatch(result.innerHTML, /<script>|<img|javascript:/);

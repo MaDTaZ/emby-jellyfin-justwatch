@@ -1,4 +1,37 @@
 <div data-role="page" class="page type-interior pluginConfigurationPage justWatchConfigurationPage" data-require="emby-button,emby-input,emby-select">
+<style>
+.justWatchConfigurationPage .justWatchResults { margin-top: 2em; }
+.justWatchConfigurationPage .jw-result { max-width: 1100px; margin: 0 0 24px; padding: 26px; border: 1px solid rgba(140,150,165,.22); border-radius: 16px; background: rgba(130,140,155,.055); color: inherit; }
+.justWatchConfigurationPage .jw-result-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-bottom: 22px; border-bottom: 1px solid rgba(140,150,165,.18); }
+.justWatchConfigurationPage .jw-eyebrow { margin: 0 0 8px; font-size: .76em; font-weight: 600; letter-spacing: .11em; text-transform: uppercase; opacity: .65; }
+.justWatchConfigurationPage .jw-result h3 { margin: 0; font-size: 1.65em; font-weight: 600; line-height: 1.3; }
+.justWatchConfigurationPage .jw-year { font-size: .65em; font-weight: 400; opacity: .6; margin-left: 6px; }
+.justWatchConfigurationPage .jw-source { flex-shrink: 0; color: #00a4dc; text-decoration: none; font-weight: 600; font-size: .9em; padding: 10px 14px; border: 1px solid rgba(0,164,220,.35); border-radius: 8px; }
+.justWatchConfigurationPage .jw-section { margin-top: 24px; }
+.justWatchConfigurationPage .jw-section-heading { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+.justWatchConfigurationPage .jw-section h4 { margin: 0; font-size: 1em; font-weight: 600; }
+.justWatchConfigurationPage .jw-count { font-size: .78em; opacity: .55; }
+.justWatchConfigurationPage .jw-provider-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(230px,1fr)); gap: 12px; }
+.justWatchConfigurationPage .jw-provider { min-width: 0; padding: 16px; border: 1px solid rgba(140,150,165,.22); border-radius: 12px; background: rgba(130,140,155,.07); }
+.justWatchConfigurationPage .jw-provider-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.justWatchConfigurationPage .jw-provider-mark { width: 32px; height: 32px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 9px; background: rgba(0,164,220,.12); color: #00a4dc; font-size: .85em; font-weight: 700; }
+.justWatchConfigurationPage .jw-provider h5 { margin: 0; font-size: .95em; font-weight: 600; overflow-wrap: anywhere; }
+.justWatchConfigurationPage .jw-variants { display: grid; gap: 7px; }
+.justWatchConfigurationPage .jw-offer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 10px; border-radius: 7px; background: rgba(130,140,155,.09); color: inherit; text-decoration: none; line-height: 1.4; }
+.justWatchConfigurationPage a.jw-offer:hover { background: rgba(0,164,220,.15); color: #00a4dc; }
+.justWatchConfigurationPage .jw-offer:focus-visible, .justWatchConfigurationPage .jw-source:focus-visible { outline: 2px solid #00a4dc; outline-offset: 3px; }
+.justWatchConfigurationPage .jw-quality { font-size: .78em; opacity: .7; }
+.justWatchConfigurationPage .jw-price { font-size: .87em; font-weight: 600; text-align: right; }
+.justWatchConfigurationPage .jw-note { margin: 24px 0 0; font-size: .76em; opacity: .55; line-height: 1.6; }
+.justWatchConfigurationPage .jw-empty { padding: 18px; border-radius: 10px; background: rgba(130,140,155,.08); }
+@media(max-width: 600px) {
+.justWatchConfigurationPage .jw-result { padding: 18px; }
+.justWatchConfigurationPage .jw-result-header { align-items: flex-start; flex-direction: column; }
+.justWatchConfigurationPage .jw-provider-grid { grid-template-columns: 1fr; }
+.justWatchConfigurationPage .jw-result h3 { font-size: 1.4em; }
+}
+</style>
+
   <div data-role="content">
     <div class="content-primary">
       <form class="justWatchSettingsForm">
@@ -102,40 +135,65 @@
         } catch (_) { return ''; }
     }
 
+    function normalize(raw) {
+        const value = {};
+        Object.keys(raw).forEach(function (key) { value[key.toLowerCase()] = raw[key]; });
+        return value;
+    }
+
     function renderResults(page, results) {
         const container = query(page, '.justWatchResults');
         if (!results || !results.length) {
-            container.innerHTML = '<p>No matching titles found. Try another title or omit the year.</p>';
+            container.innerHTML = '<p class="jw-empty">No matching titles found. Try another title or omit the year.</p>';
             return;
         }
+        const categories = ['Subscription', 'Free', 'Free with ads', 'Rent', 'Buy', 'Disc & Blu-ray', 'Other offers'];
         container.innerHTML = results.map(function (raw) {
-            // Jellyfin normally uses camelCase; Emby uses PascalCase.
-            const item = {};
-            Object.keys(raw).forEach(function (key) { item[key.toLowerCase()] = raw[key]; });
-            const groups = {};
+            const item = normalize(raw);
+            const groups = new Map();
             (item.offers || []).forEach(function (rawOffer) {
-                const offer = {};
-                Object.keys(rawOffer).forEach(function (key) { offer[key.toLowerCase()] = rawOffer[key]; });
+                const offer = normalize(rawOffer);
                 const type = String(offer.monetizationtype || '').toUpperCase();
-                const label = { FLATRATE: 'Subscription', RENT: 'Rent', BUY: 'Buy', FREE: 'Free', ADS: 'Free with ads' }[type] || 'Other offers';
-                (groups[label] = groups[label] || []).push(offer);
+                const quality = String(offer.quality || '').replace(/^_/, '').replace('BLURAY', 'Blu-ray');
+                const label = /^(DVD|Blu-ray)$/i.test(quality) ? 'Disc & Blu-ray'
+                    : ({ FLATRATE: 'Subscription', RENT: 'Rent', BUY: 'Buy', FREE: 'Free', ADS: 'Free with ads' }[type] || 'Other offers');
+                if (!groups.has(label)) groups.set(label, new Map());
+                const providers = groups.get(label);
+                const key = String(offer.providerid || offer.providername || 'Unknown provider');
+                if (!providers.has(key)) providers.set(key, { name: offer.providername || 'Unknown provider', variants: new Map() });
+                const provider = providers.get(key);
+                const href = safeUrl(offer.url);
+                // Merge qualities only when both price and destination match.
+                const variantKey = JSON.stringify([offer.price || '', href]);
+                if (!provider.variants.has(variantKey)) provider.variants.set(variantKey, { price: offer.price, href: href, qualities: new Set() });
+                if (quality) provider.variants.get(variantKey).qualities.add(quality);
             });
-            const offers = Object.keys(groups).map(function (label) {
-                return '<h4>' + escapeHtml(label) + '</h4><ul>' + groups[label].map(function (offer) {
-                    const href = safeUrl(offer.url);
-                    return '<li>' + (href ? '<a target="_blank" rel="noopener noreferrer" href="' + href + '">' : '')
-                        + escapeHtml(offer.providername) + (href ? '</a>' : '')
-                        + (offer.quality ? ' · ' + escapeHtml(offer.quality) : '')
-                        + (offer.price ? ' · ' + escapeHtml(offer.price) : '') + '</li>';
-                }).join('') + '</ul>';
-            }).join('') || '<p>No streaming offers returned for this region. Check JustWatch for details.</p>';
+            const offers = categories.filter(function (label) { return groups.has(label); }).map(function (label) {
+                const providers = Array.from(groups.get(label).values());
+                return '<section class="jw-section"><div class="jw-section-heading"><h4>' + escapeHtml(label)
+                    + '</h4><span class="jw-count">' + providers.length + (providers.length === 1 ? ' provider' : ' providers') + '</span></div>'
+                    + '<div class="jw-provider-grid">' + providers.map(function (provider) {
+                        return '<article class="jw-provider"><div class="jw-provider-heading"><span class="jw-provider-mark" aria-hidden="true">'
+                            + escapeHtml(provider.name.charAt(0).toUpperCase()) + '</span><h5>' + escapeHtml(provider.name) + '</h5></div>'
+                            + '<div class="jw-variants">' + Array.from(provider.variants.values()).map(function (variant) {
+                                const qualities = Array.from(variant.qualities).sort(function (a, b) {
+                                    return ['4K', 'HD', 'SD'].indexOf(a) - ['4K', 'HD', 'SD'].indexOf(b);
+                                });
+                                const content = '<span class="jw-quality">' + escapeHtml(qualities.join(' / ') || 'View offer') + '</span>'
+                                    + '<span class="jw-price">' + escapeHtml(variant.price || 'Watch')
+                                    + (variant.href ? ' <span aria-hidden="true">↗</span>' : '') + '</span>';
+                                return variant.href ? '<a class="jw-offer" target="_blank" rel="noopener noreferrer" aria-label="'
+                                    + escapeHtml(provider.name + ', ' + label + ', ' + (variant.price || 'view offer') + ', ' + qualities.join(' / '))
+                                    + '" href="' + variant.href + '">' + content + '</a>' : '<div class="jw-offer jw-unlinked">' + content + '</div>';
+                            }).join('') + '</div></article>';
+                    }).join('') + '</div></section>';
+            }).join('') || '<p class="jw-empty">No streaming offers returned for this region. Check JustWatch for details.</p>';
             const href = safeUrl(item.justwatchurl);
-            return '<div class="paperList" style="padding:1em;margin-bottom:.75em;">'
-                + '<h3 style="margin-top:0;">' + escapeHtml(item.title)
-                + (item.year ? ' (' + escapeHtml(item.year) + ')' : '') + '</h3>'
-                + '<p>Availability in ' + escapeHtml(item.country) + '</p>' + offers
-                + (href ? '<a target="_blank" rel="noopener noreferrer" href="' + href + '">Check on JustWatch</a>' : '')
-                + '</div>';
+            return '<article class="jw-result"><header class="jw-result-header"><div><p class="jw-eyebrow">Availability in '
+                + escapeHtml(item.country) + '</p><h3>' + escapeHtml(item.title)
+                + (item.year ? ' <span class="jw-year">' + escapeHtml(item.year) + '</span>' : '') + '</h3></div>'
+                + (href ? '<a class="jw-source" target="_blank" rel="noopener noreferrer" href="' + href + '">JustWatch <span aria-hidden="true">↗</span></a>' : '')
+                + '</header>' + offers + '<p class="jw-note">Availability and prices can change. Confirm details with the provider.</p></article>';
         }).join('');
     }
 
