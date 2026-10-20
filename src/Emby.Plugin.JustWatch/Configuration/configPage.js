@@ -316,6 +316,18 @@ define([], function () {
         });
     }
 
+    function clearSearch(page) {
+        page.searchGeneration = (page.searchGeneration || 0) + 1;
+        page.seerrStatusGeneration = (page.seerrStatusGeneration || 0) + 1;
+        page.providerResults = [];
+        query(page, '.justWatchTitle').value = '';
+        query(page, '.justWatchYear').value = '';
+        query(page, '.justWatchMediaType').value = '';
+        query(page, '.justWatchResults').innerHTML = '';
+        query(page, '.justWatchProviderFilters').innerHTML = '';
+        query(page, '.justWatchSearchButton').disabled = false;
+    }
+
     function search(page) {
         const title = query(page, '.justWatchTitle').value.trim();
         if (!title) {
@@ -332,15 +344,19 @@ define([], function () {
             anywhere: query(page, '.justWatchSearchScope').value === 'anywhere'
         });
 
+        const generation = (page.searchGeneration || 0) + 1;
+        page.searchGeneration = generation;
         query(page, '.justWatchProviderFilters').innerHTML = '';
         query(page, '.justWatchSearchButton').disabled = true;
         query(page, '.justWatchResults').innerHTML = '<p>' + (query(page, '.justWatchSearchScope').value === 'anywhere' ? 'Checking your chosen countries…' : 'Checking availability…') + '</p>';
         Dashboard.showLoadingMsg();
         ApiClient.ajax({ type: 'GET', url: url, dataType: 'json' }).then(function (results) {
+            if (generation !== page.searchGeneration) return;
             query(page, '.justWatchSearchButton').disabled = false;
             renderResults(page, results);
             Dashboard.hideLoadingMsg();
         }, function () {
+            if (generation !== page.searchGeneration) return;
             Dashboard.hideLoadingMsg();
             query(page, '.justWatchSearchButton').disabled = false;
             query(page, '.justWatchResults').textContent = 'Availability lookup failed. Try again later and check your saved country and language settings.';
@@ -350,12 +366,14 @@ define([], function () {
     return function (view) {
         view.addEventListener('pageshow', function () {
             const page = this;
+            clearSearch(page);
             loadConfig(page);
             if (page.dataset.justWatchBound) {
                 return;
             }
 
             page.dataset.justWatchBound = 'true';
+            page.addEventListener('pagehide', function () { clearSearch(page); Dashboard.hideLoadingMsg(); });
             loadProviderFilters(page);
             query(page, '.justWatchProviderFilters').addEventListener('click', function (event) { handleProviderFilter(page, event); });
             query(page, '.justWatchSettingsForm').addEventListener('submit', function (event) {
@@ -366,6 +384,11 @@ define([], function () {
                 if (event.target.classList.contains('jw-poster')) event.target.hidden = true;
             }, true);
             query(page, '.justWatchResults').addEventListener('click', function (event) { handleSeerrClick(page, event); });
+            query(page, '.justWatchClearButton').addEventListener('click', function () {
+                clearSearch(page);
+                Dashboard.hideLoadingMsg();
+                query(page, '.justWatchTitle').focus();
+            });
             query(page, '.justWatchSearchButton').addEventListener('click', function () {
                 search(page);
             });

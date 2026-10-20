@@ -58,7 +58,8 @@
 .justWatchConfigurationPage .jw-search-section > h3 { font-size: 1.1em; margin-bottom: 24px; }
 .justWatchConfigurationPage .jw-search-grid { display: grid; grid-template-columns: minmax(180px, 1fr) 110px 120px minmax(190px, 1fr) auto; align-items: start; gap: 18px; }
 .justWatchConfigurationPage .jw-search-grid > div { min-width: 0; margin-bottom: 0; }
-.justWatchConfigurationPage .jw-search-grid > button { margin: 25px 0 0; min-height: 40px; padding-inline: 28px; width: auto; }
+.justWatchConfigurationPage .jw-search-grid > .jw-search-actions { display: flex; gap: 8px; margin: 25px 0 0; }
+.justWatchConfigurationPage .jw-search-actions > button { margin: 0; min-height: 40px; padding-inline: 18px; width: auto; }
 .justWatchConfigurationPage .jw-settings { margin: 30px 0; border: 1px solid rgba(140,150,165,.22); border-radius: 12px; background: rgba(130,140,155,.04); }
 .justWatchConfigurationPage .jw-settings > summary { padding: 18px 22px; cursor: pointer; font-weight: 600; }
 .justWatchConfigurationPage .jw-settings > summary span { margin-left: 12px; font-weight: 400; font-size: .85em; opacity: .6; }
@@ -69,7 +70,7 @@
 @media(max-width: 1050px) {
 .justWatchConfigurationPage .jw-search-grid { grid-template-columns: 1fr 1fr; }
 .justWatchConfigurationPage .jw-search-grid > :first-child { grid-column: 1 / -1; }
-.justWatchConfigurationPage .jw-search-grid > button { grid-column: 1 / -1; margin-top: 0; }
+.justWatchConfigurationPage .jw-search-grid > .jw-search-actions { grid-column: 1 / -1; margin-top: 0; }
 }
 @media(max-width: 420px) {
 .justWatchConfigurationPage .jw-settings > summary span { display: block; margin: 6px 0 0; }
@@ -95,7 +96,7 @@
         <h3>Find something to watch</h3>
         <div class="jw-search-grid">
         <div class="inputContainer">
-          <input is="emby-input" class="justWatchTitle" label="Movie or series" placeholder="Search by title" />
+          <input is="emby-input" class="justWatchTitle" autocomplete="off" label="Movie or series" placeholder="Search by title" />
         </div>
         <div class="inputContainer">
           <input is="emby-input" class="justWatchYear" label="Year (optional)" type="number" min="1888" max="2100" />
@@ -113,9 +114,10 @@
             <option value="anywhere">Anywhere (chosen countries)</option>
           </select>
         </div>
-        <button is="emby-button" type="button" class="raised button-submit block justWatchSearchButton">
-          <span>Search</span>
-        </button>
+        <div class="jw-search-actions">
+          <button is="emby-button" type="button" class="raised button-submit justWatchSearchButton"><span>Search</span></button>
+          <button is="emby-button" type="button" class="raised justWatchClearButton"><span>Clear</span></button>
+        </div>
         </div>
         <div class="justWatchProviderFilters" aria-label="Provider filters"></div>
         <div class="justWatchResults" role="status" aria-live="polite" style="margin-top:1.5em;"></div>

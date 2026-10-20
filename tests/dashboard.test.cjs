@@ -18,7 +18,7 @@ async function render(host, results, fail = false, details = {State: "notRequest
         querySelector(selector) {
             if (!elements.has(selector)) elements.set(selector, {
                 value: selector === '.justWatchTitle' ? 'Arrival' : '',
-                innerHTML: '', textContent: '', disabled: false, options: [{textContent:''}],
+                focus() { this.focused = true; }, innerHTML: '', textContent: '', disabled: false, options: [{textContent:''}],
                 querySelectorAll: selector => selector === '.jw-direct-request' ? cards.map(c => c.button) : [],
                 addEventListener(type, handler) { events[selector + type] = handler; }
             });
@@ -55,11 +55,42 @@ async function render(host, results, fail = false, details = {State: "notRequest
     });
     events.pageshow.call(page);
     await new Promise(resolve => setImmediate(resolve));
+    elements.get('.justWatchTitle').value = 'Arrival';
     events['.justWatchSearchButtonclick']();
     await new Promise(resolve => setImmediate(resolve));
     return { result: elements.get('.justWatchResults'), button: elements.get('.justWatchSearchButton'), elements, events, calls, page, cards };
 }
 for (const host of ['Emby', 'Jellyfin']) {
+    test(`${host}: Clear resets the search immediately and focuses title without another request`, async () => {
+        const { page, elements, events, calls } = await render(host, [{Title:'Arrival',Offers:[]}]);
+        const before = calls.ajax.length;
+        elements.get('.justWatchYear').value = '2016';
+        events['.justWatchClearButtonclick']();
+        assert.equal(elements.get('.justWatchTitle').value,'');
+        assert.equal(elements.get('.justWatchYear').value,'');
+        assert.equal(elements.get('.justWatchResults').innerHTML,'');
+        assert.equal(elements.get('.justWatchTitle').focused,true);
+        assert.equal(calls.ajax.length,before);
+        assert.equal(page.providerResults.length,0);
+    });
+    test(`${host}: leaving and reopening clears searches but retains settings and provider choices`, async () => {
+        const { page, elements, events } = await render(host, [{Title:'Arrival', Country:'CA', Offers:[]}]);
+        elements.get('.justWatchYear').value = '2016';
+        elements.get('.justWatchMediaType').value = 'movie';
+        page.selectedProviders = new Map([['1','Netflix']]);
+        const generation = page.searchGeneration;
+        events.pagehide();
+        for (const selector of ['.justWatchTitle','.justWatchYear','.justWatchMediaType']) assert.equal(elements.get(selector).value,'');
+        assert.equal(elements.get('.justWatchResults').innerHTML,'');
+        assert.equal(elements.get('.justWatchProviderFilters').innerHTML,'');
+        assert.equal(page.providerResults.length,0);
+        assert.ok(page.searchGeneration > generation, 'old in-flight responses are invalidated');
+        events.pageshow.call(page);
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(elements.get('.justWatchTitle').value,'');
+        assert.equal(elements.get('.justWatchCountry').value,'US');
+        assert.equal(page.selectedProviders.get('1'),'Netflix');
+    });
     test(`${host}: Anywhere is explicit, passes scope, labels countries and currencies`, async () => {
         const { elements, events, calls, result } = await render(host, [{Title:'Arrival', Country:'CA', Offers:[{ProviderName:'Example',Price:'$4.99',Currency:'CAD'}]}]);
         assert.equal(calls.searches[0].anywhere, false);
