@@ -3,12 +3,17 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>
+    <EmbySdkVersion Condition="'$(EmbySdkVersion)' == ''">4.8.10</EmbySdkVersion>
     <AssemblyName>Emby.Plugin.JustWatch</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\JustWatch.Plugin.Core\JustWatch.Plugin.Core.csproj" />
-    <PackageReference Include="MediaBrowser.Common" Version="4.8.10" />
-    <PackageReference Include="MediaBrowser.Model" Version="4.8.10" />
+    <PackageReference Include="MediaBrowser.Common" Version="$(EmbySdkVersion)" Condition="'$(EmbyReferenceDirectory)' == ''" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(EmbyReferenceDirectory)' != ''">
+    <PackageReference Include="System.Memory" Version="4.6.3" />
+    <Reference Include="MediaBrowser.Common"><HintPath>$(EmbyReferenceDirectory)/MediaBrowser.Common.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="MediaBrowser.Model"><HintPath>$(EmbyReferenceDirectory)/MediaBrowser.Model.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
   <ItemGroup>
     <None Remove="Configuration\configPage.html" />

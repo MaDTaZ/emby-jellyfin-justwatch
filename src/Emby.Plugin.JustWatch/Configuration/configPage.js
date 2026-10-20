@@ -1,4 +1,4 @@
-(function () {
+define([], function () {
     const pluginId = '4df372d4-8179-4f05-9312-419434bd835d';
 
     function query(page, selector) {
@@ -25,6 +25,9 @@
             query(page, '.justWatchLanguage').value = config.Options.Language || 'en';
             query(page, '.justWatchResultLimit').value = config.Options.ResultLimit || 8;
             Dashboard.hideLoadingMsg();
+        }).catch(function () {
+            Dashboard.hideLoadingMsg();
+            Dashboard.alert('Could not load JustWatch settings.');
         });
     }
 
@@ -38,25 +41,54 @@
 
             return ApiClient.updatePluginConfiguration(pluginId, config);
         }).then(function () {
+            Dashboard.hideLoadingMsg();
             Dashboard.processPluginConfigurationUpdateResult();
+        }).catch(function () {
+            Dashboard.hideLoadingMsg();
+            Dashboard.alert('Could not save JustWatch settings.');
         });
+    }
+
+    function safeUrl(value) {
+        try {
+            const url = new URL(value);
+            return /^https?:$/.test(url.protocol) ? escapeHtml(url.href) : '';
+        } catch (_) { return ''; }
     }
 
     function renderResults(page, results) {
         const container = query(page, '.justWatchResults');
         if (!results || !results.length) {
-            container.innerHTML = '<p>No JustWatch matches found.</p>';
+            container.innerHTML = '<p>No matching titles found. Try another title or omit the year.</p>';
             return;
         }
-
-        container.innerHTML = results.map(function (item) {
-            const providers = item.Providers && item.Providers.length ? item.Providers.join(', ') : 'No providers returned';
-            const year = item.Year ? ' (' + item.Year + ')' : '';
-            const link = item.JustWatchUrl ? '<a is="emby-linkbutton" class="button-link" target="_blank" href="' + escapeHtml(item.JustWatchUrl) + '">Open JustWatch</a>' : '';
+        container.innerHTML = results.map(function (raw) {
+            // Jellyfin normally uses camelCase; Emby uses PascalCase.
+            const item = {};
+            Object.keys(raw).forEach(function (key) { item[key.toLowerCase()] = raw[key]; });
+            const groups = {};
+            (item.offers || []).forEach(function (rawOffer) {
+                const offer = {};
+                Object.keys(rawOffer).forEach(function (key) { offer[key.toLowerCase()] = rawOffer[key]; });
+                const type = String(offer.monetizationtype || '').toUpperCase();
+                const label = { FLATRATE: 'Subscription', RENT: 'Rent', BUY: 'Buy', FREE: 'Free', ADS: 'Free with ads' }[type] || 'Other offers';
+                (groups[label] = groups[label] || []).push(offer);
+            });
+            const offers = Object.keys(groups).map(function (label) {
+                return '<h4>' + escapeHtml(label) + '</h4><ul>' + groups[label].map(function (offer) {
+                    const href = safeUrl(offer.url);
+                    return '<li>' + (href ? '<a target="_blank" rel="noopener noreferrer" href="' + href + '">' : '')
+                        + escapeHtml(offer.providername) + (href ? '</a>' : '')
+                        + (offer.quality ? ' · ' + escapeHtml(offer.quality) : '')
+                        + (offer.price ? ' · ' + escapeHtml(offer.price) : '') + '</li>';
+                }).join('') + '</ul>';
+            }).join('') || '<p>No streaming offers returned for this region. Check JustWatch for details.</p>';
+            const href = safeUrl(item.justwatchurl);
             return '<div class="paperList" style="padding:1em;margin-bottom:.75em;">'
-                + '<h3 style="margin-top:0;">' + escapeHtml(item.Title) + escapeHtml(year) + '</h3>'
-                + '<p>' + escapeHtml(providers) + '</p>'
-                + link
+                + '<h3 style="margin-top:0;">' + escapeHtml(item.title)
+                + (item.year ? ' (' + escapeHtml(item.year) + ')' : '') + '</h3>'
+                + '<p>Availability in ' + escapeHtml(item.country) + '</p>' + offers
+                + (href ? '<a target="_blank" rel="noopener noreferrer" href="' + href + '">Check on JustWatch</a>' : '')
                 + '</div>';
         }).join('');
     }
@@ -76,18 +108,22 @@
             mediaType: mediaType || null
         });
 
+        query(page, '.justWatchSearchButton').disabled = true;
+        query(page, '.justWatchResults').innerHTML = '<p>Checking availability…</p>';
         Dashboard.showLoadingMsg();
         ApiClient.ajax({ type: 'GET', url: url, dataType: 'json' }).then(function (results) {
+            query(page, '.justWatchSearchButton').disabled = false;
             renderResults(page, results);
             Dashboard.hideLoadingMsg();
         }, function () {
             Dashboard.hideLoadingMsg();
-            Dashboard.alert('JustWatch lookup failed.');
+            query(page, '.justWatchSearchButton').disabled = false;
+            query(page, '.justWatchResults').textContent = 'Availability lookup failed. Try again later and check your saved country and language settings.';
         });
     }
 
-    document.querySelector('.justWatchConfigurationPage')
-        .addEventListener('pageshow', function () {
+    return function (view) {
+        view.addEventListener('pageshow', function () {
             const page = this;
             loadConfig(page);
             if (page.dataset.justWatchBound) {
@@ -103,4 +139,5 @@
                 search(page);
             });
         });
-})();
+    };
+});

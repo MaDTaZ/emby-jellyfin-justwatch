@@ -3,13 +3,13 @@
     <div class="content-primary">
       <form class="justWatchSettingsForm">
         <div class="verticalSection">
-          <h2>JustWatch</h2>
+          <h2>Where to Watch</h2><p>Choose your region, save settings, then search for a movie or series.</p>
           <div class="inputContainer">
-            <input is="emby-input" class="justWatchCountry" label="Country" maxlength="2" />
+            <input is="emby-input" class="justWatchCountry" label="Country" maxlength="2" minlength="2" pattern="[A-Za-z]{2}" required />
             <div class="fieldDescription">Two-letter region code, such as US, CA, GB, or AU.</div>
           </div>
           <div class="inputContainer">
-            <input is="emby-input" class="justWatchLanguage" label="Language" maxlength="2" />
+            <input is="emby-input" class="justWatchLanguage" label="Language" maxlength="2" minlength="2" pattern="[A-Za-z]{2}" required />
             <div class="fieldDescription">Two-letter language code, such as en, fr, or es.</div>
           </div>
           <div class="inputContainer">
@@ -39,7 +39,7 @@
         <button is="emby-button" type="button" class="raised button-submit block justWatchSearchButton">
           <span>Search</span>
         </button>
-        <div class="justWatchResults" style="margin-top:1.5em;"></div>
+        <div class="justWatchResults" role="status" aria-live="polite" style="margin-top:1.5em;"></div>
       </div>
     </div>
   </div>

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
@@ -19,10 +20,11 @@ namespace Emby.Plugin.JustWatch.Api
 
     public sealed class JustWatchService : IService
     {
+        private static readonly HttpClient Http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
         public Task<IReadOnlyList<JustWatchSearchResult>> Get(SearchJustWatch request)
         {
             var options = Plugin.Instance?.Configuration.Options ?? new JustWatchOptions();
-            var client = new JustWatchClient(new HttpClient(), options);
+            var client = new JustWatchClient(Http, options);
 
             return client.SearchAsync(request.Title, request.Year, request.MediaType, CancellationToken.None);
         }

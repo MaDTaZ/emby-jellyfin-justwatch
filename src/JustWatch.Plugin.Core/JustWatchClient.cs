@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -32,77 +31,100 @@ namespace JustWatch.Plugin.Core
                 return Array.Empty<JustWatchSearchResult>();
             }
 
-            var locale = string.Format(
-                CultureInfo.InvariantCulture,
-                "{0}_{1}",
-                _options.Language,
-                _options.Country.ToUpperInvariant());
-            var endpoint = $"{_options.BaseUrl.TrimEnd('/')}/content/titles/{locale}/popular";
-            var body = CreateSearchBody(title, mediaType);
+            if (title.Length > 200) throw new ArgumentException("Title must be at most 200 characters.", nameof(title));
+            if (!IsCode(_options.Country) || !IsCode(_options.Language))
+                throw new ArgumentException("Country and language must be two-letter codes.");
+            if (!string.IsNullOrEmpty(mediaType) && !string.Equals(mediaType, "movie", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(mediaType, "series", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Media type must be movie or series.", nameof(mediaType));
 
+            var body = JsonSerializer.Serialize(new
+            {
+                query = SearchQuery,
+                variables = new
+                {
+                    country = _options.Country.ToUpperInvariant(),
+                    language = _options.Language.ToLowerInvariant(),
+                    first = Math.Min(20, Math.Max(1, _options.ResultLimit)),
+                    filter = new { searchQuery = title, objectTypes = string.Equals(mediaType, "series", StringComparison.OrdinalIgnoreCase)
+                        ? new[] { "SHOW" } : string.Equals(mediaType, "movie", StringComparison.OrdinalIgnoreCase)
+                        ? new[] { "MOVIE" } : new[] { "MOVIE", "SHOW" } }
+                }
+            });
             using var content = new StringContent(body, Encoding.UTF8, "application/json");
-            using var response = await _httpClient.PostAsync(endpoint, content, cancellationToken).ConfigureAwait(false);
+            using var response = await _httpClient.PostAsync($"{_options.BaseUrl.TrimEnd('/')}/graphql", content, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
-
             using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
             using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-            if (!document.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
-            {
-                return Array.Empty<JustWatchSearchResult>();
-            }
+            if (document.RootElement.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Array && errors.GetArrayLength() > 0)
+                throw new HttpRequestException("JustWatch could not process the availability lookup.");
+            if (!document.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object
+                || !data.TryGetProperty("popularTitles", out var titles) || titles.ValueKind != JsonValueKind.Object
+                || !titles.TryGetProperty("edges", out var items) || items.ValueKind != JsonValueKind.Array)
+                throw new HttpRequestException("JustWatch returned an unexpected response.");
 
             return items.EnumerateArray()
-                .Select(ParseResult)
+                .Select(edge => ParseResult(edge.GetProperty("node")))
                 .Where(result => IsLikelyMatch(result, title, year))
                 .Take(Math.Max(1, _options.ResultLimit))
                 .ToList();
         }
 
-        private static string CreateSearchBody(string title, string? mediaType)
-        {
-            var objectTypes = string.Equals(mediaType, "series", StringComparison.OrdinalIgnoreCase)
-                ? "[\"show\"]"
-                : string.Equals(mediaType, "movie", StringComparison.OrdinalIgnoreCase)
-                    ? "[\"movie\"]"
-                    : "[\"movie\",\"show\"]";
+        private const string SearchQuery = @"
+query WhereToWatch($country: Country!, $language: Language!, $first: Int!, $filter: TitleFilter!) {
+  popularTitles(country: $country, filter: $filter, first: $first, sortBy: POPULAR, sortRandomSeed: 0) {
+    edges { node {
+      id objectType
+      content(country: $country, language: $language) { title originalReleaseYear fullPath }
+      offers(country: $country, platform: WEB, filter: {bestOnly: false}) {
+        monetizationType presentationType retailPrice(language: $language) currency standardWebURL
+        package { packageId clearName }
+      }
+    } }
+  }
+}";
 
-            return "{"
-                + "\"content_types\":" + objectTypes + ","
-                + "\"page\":1,"
-                + "\"page_size\":20,"
-                + "\"query\":" + JsonSerializer.Serialize(title)
-                + "}";
-        }
+        private static bool IsCode(string? value) => value != null && value.Length == 2
+            && value.All(c => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'));
 
-        private static JustWatchSearchResult ParseResult(JsonElement item)
+        private JustWatchSearchResult ParseResult(JsonElement item)
         {
+            var content = item.GetProperty("content");
             var result = new JustWatchSearchResult
             {
                 Id = GetString(item, "id") ?? string.Empty,
-                Title = GetString(item, "title") ?? string.Empty,
-                OriginalTitle = GetString(item, "original_title"),
-                Year = GetInt(item, "original_release_year"),
-                ObjectType = GetString(item, "object_type"),
-                PosterUrl = NormalizePoster(GetString(item, "poster"))
+                Title = GetString(content, "title") ?? string.Empty,
+                Year = GetInt(content, "originalReleaseYear"),
+                ObjectType = GetString(item, "objectType"),
+                Country = _options.Country.ToUpperInvariant(),
+                JustWatchUrl = SafeUrl(GetString(content, "fullPath"), "https://www.justwatch.com")
             };
-
-            if (item.TryGetProperty("full_path", out var fullPath) && fullPath.ValueKind == JsonValueKind.String)
-            {
-                result.JustWatchUrl = "https://www.justwatch.com" + fullPath.GetString();
-            }
-
             if (item.TryGetProperty("offers", out var offers) && offers.ValueKind == JsonValueKind.Array)
             {
-                result.Providers = offers.EnumerateArray()
-                    .Select(offer => GetString(offer, "provider_id"))
-                    .Where(provider => !string.IsNullOrWhiteSpace(provider))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Cast<string>()
-                    .ToList();
+                result.Offers = offers.EnumerateArray().Select(offer =>
+                {
+                    var package = offer.GetProperty("package");
+                    return new JustWatchOffer
+                    {
+                        ProviderId = GetString(package, "packageId") ?? string.Empty,
+                        ProviderName = GetString(package, "clearName") ?? "Unknown provider",
+                        MonetizationType = GetString(offer, "monetizationType") ?? "OTHER",
+                        Quality = GetString(offer, "presentationType"),
+                        Price = GetString(offer, "retailPrice"),
+                        Currency = GetString(offer, "currency"),
+                        Url = SafeUrl(GetString(offer, "standardWebURL"))
+                    };
+                }).ToList();
+                result.Providers = result.Offers.Select(o => o.ProviderName).Distinct().ToList();
             }
-
             return result;
+        }
+
+        private static string? SafeUrl(string? value, string? baseUrl = null)
+        {
+            if (value == null || string.IsNullOrWhiteSpace(value)) return null;
+            if (baseUrl != null && value.StartsWith("/", StringComparison.Ordinal) && !value.StartsWith("//", StringComparison.Ordinal)) value = baseUrl + value;
+            return Uri.TryCreate(value, UriKind.Absolute, out var uri) && (uri.Scheme == "https" || uri.Scheme == "http") ? uri.AbsoluteUri : null;
         }
 
         private static bool IsLikelyMatch(JustWatchSearchResult result, string title, int? year)
@@ -124,28 +146,17 @@ namespace JustWatch.Plugin.Core
 
         private static string? GetString(JsonElement item, string propertyName)
         {
-            return item.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String
-                ? value.GetString()
+            return item.TryGetProperty(propertyName, out var value) && (value.ValueKind == JsonValueKind.String || value.ValueKind == JsonValueKind.Number)
+                ? value.ToString()
                 : null;
         }
 
         private static int? GetInt(JsonElement item, string propertyName)
         {
-            return item.TryGetProperty(propertyName, out var value) && value.TryGetInt32(out var number)
+            return item.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number)
                 ? number
                 : null;
         }
 
-        private static string? NormalizePoster(string? poster)
-        {
-            if (string.IsNullOrWhiteSpace(poster))
-            {
-                return null;
-            }
-
-            return poster.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                ? poster
-                : "https://images.justwatch.com" + poster.Replace("{profile}", "s592");
-        }
     }
 }

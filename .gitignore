@@ -9,3 +9,8 @@ obj/
 *.snupkg
 TestResults/
 coverage/
+
+artifacts/
+
+.DS_Store
+dist/
