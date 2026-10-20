@@ -167,3 +167,5 @@ Search region now offers My country and Anywhere (chosen countries). Configure A
 Search title, year, type, results, and result-derived provider chips clear on leaving and reopening the page. In-flight search responses are ignored after navigation so they cannot restore the previous results. Title autocomplete is disabled. Region/Seerr settings and saved provider preferences remain intact. Jellyfin 12 uses 0.1.11.0; Jellyfin 10.10.7 uses 0.1.10.1.
 
 A Clear button beside Search resets fields and results immediately and returns focus to the title. It also invalidates pending responses so an earlier search cannot repopulate the page after clearing.
+
+The catalog image uses a landscape mascot banner with the full character inside the card framing. The original square artwork remains in assets/where-to-watch-mascot-v1.png.
