@@ -18,7 +18,7 @@ async function render(host, results, fail = false) {
         },
         addEventListener(type, handler) { events[type] = handler; }
     };
-    const calls = { updates: [], confirmations: [], searches: [] };
+    const calls = { updates: [], confirmations: [], searches: [], ajax: [] };
     let source;
     if (host === 'Jellyfin') {
         const html = fs.readFileSync('src/Jellyfin.Plugin.JustWatch/Configuration/configPage.html', 'utf8');
@@ -35,8 +35,14 @@ async function render(host, results, fail = false) {
         ApiClient: {
             getPluginConfiguration: async () => ({ Options: {} }),
             updatePluginConfiguration: async (_id, config) => { calls.updates.push(config); return { status: 204 }; },
-            getUrl: (_path, parameters) => { calls.searches.push(parameters); return '/JustWatch/Search'; },
-            ajax: () => fail ? Promise.reject(new Error('offline')) : Promise.resolve(results)
+            getUrl: (_path, parameters) => { calls.searches.push(parameters); return '/' + _path; },
+            ajax: (options) => {
+                calls.ajax.push(options);
+                if (fail) return Promise.reject(new Error('offline'));
+                if (options.type === 'POST') return Promise.resolve({ Success: true, Message: 'Request accepted by Seerr.' });
+                if (String(options.url).includes('Seerr/Details')) return Promise.resolve({ Seasons: [{Number: 1, Name: 'Season 1'}, {Number: 2, Name: 'Season 2'}] });
+                return Promise.resolve(results);
+            }
         }
     });
     events.pageshow.call(page);
@@ -51,6 +57,7 @@ for (const host of ['Emby', 'Jellyfin']) {
         assert.equal(elements.get('.justWatchCountry').value, 'US');
         assert.equal(elements.get('.justWatchLanguage').value, 'en');
         assert.equal(elements.get('.justWatchResultLimit').value, 8);
+        elements.get('.justWatchSeerrApiKey').value = 'test-key';
         elements.get('.justWatchSeerrUrl').value = 'https://seerr.example.com';
         elements.get('.justWatchCountry').value = 'ca';
         elements.get('.justWatchLanguage').value = 'EN';
@@ -60,6 +67,7 @@ for (const host of ['Emby', 'Jellyfin']) {
         await new Promise(resolve => setImmediate(resolve));
         assert.equal(prevented, true);
         assert.equal(calls.updates.length, 1);
+        assert.equal(calls.updates[0].Options.SeerrApiKey, 'test-key');
         assert.equal(calls.updates[0].Options.SeerrUrl, 'https://seerr.example.com');
         assert.equal(calls.updates[0].Options.Country, 'CA');
         assert.equal(calls.updates[0].Options.Language, 'en');
@@ -102,6 +110,37 @@ for (const host of ['Emby', 'Jellyfin']) {
         assert.match(result.innerHTML, /https:\/\/seerr.example.com\/movie\/329865/);
         assert.doesNotMatch((await render(host, [{Title: 'Arrival'}])).result.innerHTML, /Request in Seerr/);
         assert.doesNotMatch((await render(host, [{Title: 'Arrival', SeerrUrl: 'javascript:alert(1)'}])).result.innerHTML, /Request in Seerr/);
+    });
+    test(`${host}: direct movie request uses POST and never sends the API key`, async () => {
+        const view = await render(host, [{Title: 'Arrival', TmdbId: 329865, ObjectType: 'MOVIE', CanRequestInSeerr: true}]);
+        assert.match(view.result.innerHTML, /jw-direct-request/);
+        const panel = {textContent: ''};
+        const card = {querySelector: () => panel};
+        const button = {disabled: false, dataset: {seerrId: '329865', seerrType: 'movie'}, closest: () => card};
+        view.events['.justWatchResultsclick']({target: {closest: () => button}});
+        await new Promise(resolve => setImmediate(resolve));
+        const post = view.calls.ajax.find(c => c.type === 'POST');
+        assert.equal(post.url, '/JustWatch/Seerr/Request');
+        assert.deepEqual(JSON.parse(post.data), {TmdbId: 329865, MediaType: 'movie', Seasons: []});
+        assert.doesNotMatch(post.data, /ApiKey|apiKey/);
+        assert.equal(button.disabled, true);
+        assert.equal(button.textContent, 'Requested');
+        assert.match(panel.textContent, /accepted/);
+    });
+    test(`${host}: TV loads choices before requesting only selected seasons`, async () => {
+        const view = await render(host, [{Title: 'Show', TmdbId: 1396, ObjectType: 'SHOW', CanRequestInSeerr: true}]);
+        const panel = {textContent: '', innerHTML: '', querySelectorAll: () => [{value:'2'}]};
+        let button;
+        const card = {querySelector: (selector) => selector === '.jw-request-panel' ? panel : button};
+        button = {disabled: false, dataset: {seerrId: '1396', seerrType: 'tv'}, closest: () => card};
+        view.events['.justWatchResultsclick']({target: {closest: () => button}});
+        await new Promise(resolve => setImmediate(resolve));
+        assert.match(panel.innerHTML, /Season 1/);
+        assert.equal(view.calls.ajax.filter(c => c.type === 'POST').length, 0);
+        const submit = {disabled: false, dataset: {seerrId: '1396', seerrType: 'tv', seerrAction:'submit'}, closest: () => card};
+        view.events['.justWatchResultsclick']({target: {closest: () => submit}});
+        await new Promise(resolve => setImmediate(resolve));
+        assert.deepEqual(JSON.parse(view.calls.ajax.find(c => c.type === 'POST').data).Seasons, [2]);
     });
     test(`${host}: escapes titles and rejects script links`, async () => {
         const { result } = await render(host, [{ Title: '<script>alert(1)</script>', JustWatchUrl: 'javascript:alert(1)', Offers: [{ProviderName: '<img onerror=x>', Url: 'javascript:alert(1)'}] }]);

@@ -31,7 +31,8 @@ handler.Body = "{\"errors\":[{\"message\":\"failed\"}]}";
 await ExpectFailure(() => client.SearchAsync("Arrival", null, null, default));
 handler.Body = "{}";
 await ExpectFailure(() => client.SearchAsync("Arrival", null, null, default));
-Console.WriteLine("Shared client smoke checks passed.");
+await SeerrSmoke.Run();
+Console.WriteLine("Shared client and direct Seerr request checks passed.");
 static void Check(bool condition, string name) { if (!condition) throw new Exception(name); }
 static async Task ExpectFailure(Func<Task<IReadOnlyList<JustWatchSearchResult>>> action)
 {

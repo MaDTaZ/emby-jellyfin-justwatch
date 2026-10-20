@@ -18,6 +18,8 @@ namespace JustWatch.Plugin.Core
 
         public string? JustWatchUrl { get; set; }
 
+        public bool CanRequestInSeerr { get; set; }
+
         public int? TmdbId { get; set; }
 
         public string? SeerrUrl { get; set; }

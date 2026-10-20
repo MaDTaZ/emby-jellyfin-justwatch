@@ -104,6 +104,7 @@ query WhereToWatch($country: Country!, $language: Language!, $first: Int!, $filt
             {
                 result.TmdbId = GetInt(externalIds, "tmdbId");
                 result.SeerrUrl = SeerrLinks.ForTitle(_options.SeerrUrl, result.TmdbId, result.ObjectType);
+                result.CanRequestInSeerr = result.SeerrUrl != null && !string.IsNullOrWhiteSpace(_options.SeerrApiKey);
             }
             if (item.TryGetProperty("offers", out var offers) && offers.ValueKind == JsonValueKind.Array)
             {

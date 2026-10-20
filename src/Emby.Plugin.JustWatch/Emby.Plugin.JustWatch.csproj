@@ -8,10 +8,12 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\JustWatch.Plugin.Core\JustWatch.Plugin.Core.csproj" />
+    <PackageReference Include="MediaBrowser.Server.Core" Version="$(EmbySdkVersion)" Condition="'$(EmbyReferenceDirectory)' == ''" />
     <PackageReference Include="MediaBrowser.Common" Version="$(EmbySdkVersion)" Condition="'$(EmbyReferenceDirectory)' == ''" />
   </ItemGroup>
   <ItemGroup Condition="'$(EmbyReferenceDirectory)' != ''">
     <PackageReference Include="System.Memory" Version="4.6.3" />
+    <Reference Include="MediaBrowser.Controller"><HintPath>$(EmbyReferenceDirectory)/MediaBrowser.Controller.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="MediaBrowser.Common"><HintPath>$(EmbyReferenceDirectory)/MediaBrowser.Common.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="MediaBrowser.Model"><HintPath>$(EmbyReferenceDirectory)/MediaBrowser.Model.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>

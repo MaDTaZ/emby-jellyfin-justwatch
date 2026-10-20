@@ -9,6 +9,11 @@
 .justWatchConfigurationPage .jw-source { flex-shrink: 0; color: #00a4dc; text-decoration: none; font-weight: 600; font-size: .9em; padding: 10px 14px; border: 1px solid rgba(0,164,220,.35); border-radius: 8px; }
 .justWatchConfigurationPage .jw-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .justWatchConfigurationPage .jw-seerr { background: rgba(0,164,220,.14); }
+.justWatchConfigurationPage button.jw-source { font: inherit; cursor: pointer; }
+.justWatchConfigurationPage button.jw-source:disabled { opacity: .55; cursor: default; }
+.justWatchConfigurationPage .jw-request-panel:not(:empty) { margin-top: 16px; padding: 14px; border-radius: 8px; background: rgba(0,164,220,.07); }
+.justWatchConfigurationPage .jw-season-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.justWatchConfigurationPage .jw-season { display: inline-flex; align-items: center; gap: 6px; }
 .justWatchConfigurationPage .jw-section { margin-top: 24px; }
 .justWatchConfigurationPage .jw-section-heading { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
 .justWatchConfigurationPage .jw-section h4 { margin: 0; font-size: 1em; font-weight: 600; }
@@ -52,7 +57,11 @@
           </div>
           <div class="inputContainer">
             <input is="emby-input" class="justWatchSeerrUrl" label="Seerr URL (optional)" type="url" placeholder="https://seerr.example.com" />
-            <div class="fieldDescription">Add your Seerr address to show Request in Seerr buttons. Requests are submitted in Seerr using your own account.</div>
+            <div class="fieldDescription">Add your Seerr address. With an API key, request directly here; without one, open the title in Seerr.</div>
+          </div>
+          <div class="inputContainer">
+            <input is="emby-input" class="justWatchSeerrApiKey" label="Seerr API key (optional)" type="password" autocomplete="new-password" />
+            <div class="fieldDescription">Enable direct requests without a Seerr login. Requests use the API key account and its approval settings. Only server administrators can send direct requests.</div>
           </div>
           <button is="emby-button" type="submit" class="raised button-submit block">
             <span>Save</span>
@@ -91,7 +100,7 @@
     }
 
     function escapeHtml(value) {
-        return String(value || '').replace(/[&<>"']/g, function (char) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
             return {
                 '&': '&amp;',
                 '<': '&lt;',
@@ -107,6 +116,7 @@
         ApiClient.getPluginConfiguration(pluginId).then(function (config) {
             config.Options = config.Options || {};
             query(page, '.justWatchCountry').value = config.Options.Country || 'US';
+            query(page, '.justWatchSeerrApiKey').value = config.Options.SeerrApiKey || '';
             query(page, '.justWatchSeerrUrl').value = config.Options.SeerrUrl || '';
             query(page, '.justWatchLanguage').value = config.Options.Language || 'en';
             query(page, '.justWatchResultLimit').value = config.Options.ResultLimit || 8;
@@ -123,6 +133,7 @@
             config.Options = config.Options || {};
             config.Options.Country = query(page, '.justWatchCountry').value.trim().toUpperCase() || 'US';
             config.Options.Language = query(page, '.justWatchLanguage').value.trim().toLowerCase() || 'en';
+            config.Options.SeerrApiKey = query(page, '.justWatchSeerrApiKey').value.trim();
             config.Options.SeerrUrl = query(page, '.justWatchSeerrUrl').value.trim();
             config.Options.ResultLimit = parseInt(query(page, '.justWatchResultLimit').value, 10) || 8;
 
@@ -198,14 +209,74 @@
             }).join('') || '<p class="jw-empty">No streaming offers returned for this region. Check JustWatch for details.</p>';
             const href = safeUrl(item.justwatchurl);
             const seerrHref = safeUrl(item.seerrurl);
+            const type = String(item.objecttype || '').toUpperCase() === 'SHOW' ? 'tv' : 'movie';
+            const canRequest = item.canrequestinseerr && Number.isInteger(Number(item.tmdbid)) && Number(item.tmdbid) > 0;
             return '<article class="jw-result"><header class="jw-result-header"><div><p class="jw-eyebrow">Availability in '
                 + escapeHtml(item.country) + '</p><h3>' + escapeHtml(item.title)
                 + (item.year ? ' <span class="jw-year">' + escapeHtml(item.year) + '</span>' : '') + '</h3></div>'
                 + '<div class="jw-actions">'
-                + (seerrHref ? '<a class="jw-source jw-seerr" target="_blank" rel="noopener noreferrer" href="' + seerrHref + '">Request in Seerr <span aria-hidden="true">↗</span></a>' : '')
+                + (canRequest ? '<button type="button" class="jw-source jw-seerr jw-direct-request" data-seerr-id="' + Number(item.tmdbid) + '" data-seerr-type="' + type + '">' + (type === 'tv' ? 'Choose seasons' : 'Request') + '</button>' : '')
+                + (seerrHref ? '<a class="jw-source jw-seerr" target="_blank" rel="noopener noreferrer" href="' + seerrHref + '">' + (canRequest ? 'Open in Seerr' : 'Request in Seerr') + ' <span aria-hidden="true">↗</span></a>' : '')
                 + (href ? '<a class="jw-source" target="_blank" rel="noopener noreferrer" href="' + href + '">JustWatch <span aria-hidden="true">↗</span></a>' : '')
-                + '</div></header>' + offers + '<p class="jw-note">Availability and prices can change. Confirm details with the provider.</p></article>';
+                + '</div></header><div class="jw-request-panel" role="status" aria-live="polite"></div>' + offers + '<p class="jw-note">Availability and prices can change. Confirm details with the provider.</p></article>';
         }).join('');
+    }
+
+    function requestFeedback(button, panel, promise) {
+        button.disabled = true;
+        panel.textContent = 'Sending request to Seerr…';
+        return promise.then(function (raw) {
+            const result = normalize(raw);
+            panel.textContent = result.message || (result.success ? 'Requested in Seerr.' : 'Seerr could not complete the request.');
+            if (result.success) { button.textContent = 'Requested'; return; }
+            button.disabled = false;
+        }).catch(function () {
+            button.disabled = false;
+            panel.textContent = 'Could not request this title. Check your Seerr URL and API key, and whether it is already requested.';
+        });
+    }
+
+    function sendSeerrRequest(button, panel, id, type, seasons) {
+        return requestFeedback(button, panel, ApiClient.ajax({
+            type: 'POST', url: ApiClient.getUrl('JustWatch/Seerr/Request'),
+            contentType: 'application/json', dataType: 'json',
+            data: JSON.stringify({ TmdbId: id, MediaType: type, Seasons: seasons || [] })
+        }));
+    }
+
+    function handleSeerrClick(page, event) {
+        const button = event.target.closest('button[data-seerr-id]');
+        if (!button || button.disabled) return;
+        const card = button.closest('.jw-result');
+        const panel = card.querySelector('.jw-request-panel');
+        const id = Number(button.dataset.seerrId);
+        const type = button.dataset.seerrType;
+        if (button.dataset.seerrAction === 'submit') {
+            const seasons = Array.from(panel.querySelectorAll('input[type="checkbox"]:checked')).map(function (input) { return Number(input.value); });
+            if (!seasons.length) { Dashboard.alert('Choose at least one season.'); return; }
+            const mainButton = card.querySelector('.jw-direct-request');
+            // Keep the season selector disabled after successful submission.
+            button.disabled = true;
+            return sendSeerrRequest(mainButton, panel, id, type, seasons);
+        }
+        if (type === 'movie') return sendSeerrRequest(button, panel, id, type, []);
+        button.disabled = true;
+        panel.textContent = 'Loading seasons from Seerr…';
+        return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('JustWatch/Seerr/Details', { tmdbId: id, mediaType: 'tv' }), dataType: 'json' }).then(function (raw) {
+            const details = normalize(raw);
+            button.disabled = false;
+            if (details.errormessage) { panel.textContent = details.errormessage; return; }
+            if (details.available) { panel.textContent = 'Already available in Seerr.'; return; }
+            const seasons = details.seasons || [];
+            if (!seasons.length) { panel.textContent = 'No seasons found. Open this title in Seerr to check it.'; return; }
+            panel.innerHTML = '<p>Choose seasons to request</p><div class="jw-season-grid">' + seasons.map(function (rawSeason) {
+                const season = normalize(rawSeason);
+                return '<label class="jw-season"><input type="checkbox" value="' + escapeHtml(season.number) + '"> ' + escapeHtml(season.name) + '</label>';
+            }).join('') + '</div><button type="button" class="jw-source jw-seerr" data-seerr-action="submit" data-seerr-id="' + id + '" data-seerr-type="tv">Request selected seasons</button>';
+        }).catch(function () {
+            button.disabled = false;
+            panel.textContent = 'Could not load seasons. Check your Seerr URL and API key.';
+        });
     }
 
     function search(page) {
@@ -249,6 +320,7 @@
                 event.preventDefault();
                 saveConfig(page);
             });
+            query(page, '.justWatchResults').addEventListener('click', function (event) { handleSeerrClick(page, event); });
             query(page, '.justWatchSearchButton').addEventListener('click', function () {
                 search(page);
             });
