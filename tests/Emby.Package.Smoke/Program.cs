@@ -17,7 +17,8 @@ foreach(var file in new[]{"dist/JustWatch-Emby-Stable-4.8.10.zip","dist/JustWatc
     foreach(var name in new[]{"JustWatchClient","SeerrClient","JustWatchSearchResponse","SeerrRequest","SeerrResult"})
         if(!types.Contains("JustWatch.Plugin.Core."+name))throw new Exception("Missing compiled-in shared type: "+name);
     var resources=metadata.ManifestResources.Select(handle=>metadata.GetString(metadata.GetManifestResource(handle).Name)).ToHashSet();
+    if(!resources.Contains("Emby.Plugin.JustWatch.Images.thumb.png"))throw new Exception("Missing embedded plugin thumbnail");
     foreach(var suffix in new[]{"configPage.html","configPage.js"})
         if(!resources.Contains("Emby.Plugin.JustWatch.Configuration."+suffix))throw new Exception("Missing dashboard resource");
-    Console.WriteLine(Path.GetFileName(file)+": single DLL, embedded shared types, no external Core reference, dashboard resources present.");
+    Console.WriteLine(Path.GetFileName(file)+": single DLL, embedded shared types, no external Core reference, dashboard resources and embedded thumbnail present.");
 }

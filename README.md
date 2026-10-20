@@ -195,3 +195,9 @@ The old two-DLL package could stop Emby during startup with FileNotFoundExceptio
 For Linux upgrades, stop Emby, move the old two DLLs outside plugins, then extract the matching new Emby ZIP directly into /var/lib/emby/plugins. Set owner/group to the service account, permissions 644, then start Emby. Keep the plugin configuration files.
 
 Verification: the old package reproduced the missing-Core startup failure; the fixed single DLL loaded as version 0.1.14.0 and reached Core startup complete on an isolated macOS arm64 Emby 4.11.0.8 instance (.NET 6.0.36). Its readiness endpoint returned server version 4.11.0.8; anonymous search and Seerr test calls returned 401. The user's Linux host uses .NET 8 and still needs confirmation after installing this fix. Package smoke checks inspect both Emby archives for exactly one DLL, no external Core assembly reference, compiled-in shared types, and embedded dashboard resources. Run `dotnet run --project tests/Emby.Package.Smoke` after packaging.
+
+## Embedded Emby thumbnail (0.1.15)
+
+Emby now implements IHasThumbImage and serves the approved titled mascot from an embedded PNG resource. This makes the installed-plugin image available without relying on a Jellyfin manifest or a separately copied image. The Emby package remains a single DLL. Jellyfin functionality is unchanged.
+
+The thumbnail-enabled beta DLL was startup-tested on the isolated official Emby 4.11.0.8 instance. It reached Core startup complete, and GET /emby/Plugins/4df372d4-8179-4f05-9312-419434bd835d/Thumb returned HTTP 200 with image/png and a valid PNG signature.

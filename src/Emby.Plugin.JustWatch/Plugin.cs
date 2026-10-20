@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using MediaBrowser.Model.Drawing;
 using Emby.Plugin.JustWatch.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
@@ -8,7 +10,7 @@ using MediaBrowser.Model.Serialization;
 
 namespace Emby.Plugin.JustWatch
 {
-    public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
+    public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IHasThumbImage
     {
         public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer)
             : base(applicationPaths, xmlSerializer)
@@ -23,6 +25,11 @@ namespace Emby.Plugin.JustWatch
         public override Guid Id => Guid.Parse("4df372d4-8179-4f05-9312-419434bd835d");
 
         public override string Description => "Find streaming providers and request movies and shows through Seerr.";
+
+        public ImageFormat ThumbImageFormat => ImageFormat.Png;
+
+        public Stream GetThumbImage() => GetType().Assembly.GetManifestResourceStream("Emby.Plugin.JustWatch.Images.thumb.png")
+            ?? throw new InvalidOperationException("The embedded Where to Watch thumbnail is missing.");
 
         public IEnumerable<PluginPageInfo> GetPages()
         {
