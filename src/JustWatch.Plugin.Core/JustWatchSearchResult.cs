@@ -18,6 +18,10 @@ namespace JustWatch.Plugin.Core
 
         public string? JustWatchUrl { get; set; }
 
+        public int? TmdbId { get; set; }
+
+        public string? SeerrUrl { get; set; }
+
         public string Country { get; set; } = string.Empty;
 
         public IReadOnlyList<JustWatchOffer> Offers { get; set; } = new List<JustWatchOffer>();

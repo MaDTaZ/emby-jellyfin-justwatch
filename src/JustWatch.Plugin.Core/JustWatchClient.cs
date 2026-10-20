@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -75,7 +76,7 @@ query WhereToWatch($country: Country!, $language: Language!, $first: Int!, $filt
   popularTitles(country: $country, filter: $filter, first: $first, sortBy: POPULAR, sortRandomSeed: 0) {
     edges { node {
       id objectType
-      content(country: $country, language: $language) { title originalReleaseYear fullPath }
+      content(country: $country, language: $language) { title originalReleaseYear fullPath externalIds { tmdbId } }
       offers(country: $country, platform: WEB, filter: {bestOnly: false}) {
         monetizationType presentationType retailPrice(language: $language) currency standardWebURL
         package { packageId clearName }
@@ -99,6 +100,11 @@ query WhereToWatch($country: Country!, $language: Language!, $first: Int!, $filt
                 Country = _options.Country.ToUpperInvariant(),
                 JustWatchUrl = SafeUrl(GetString(content, "fullPath"), "https://www.justwatch.com")
             };
+            if (content.TryGetProperty("externalIds", out var externalIds) && externalIds.ValueKind == JsonValueKind.Object)
+            {
+                result.TmdbId = GetInt(externalIds, "tmdbId");
+                result.SeerrUrl = SeerrLinks.ForTitle(_options.SeerrUrl, result.TmdbId, result.ObjectType);
+            }
             if (item.TryGetProperty("offers", out var offers) && offers.ValueKind == JsonValueKind.Array)
             {
                 result.Offers = offers.EnumerateArray().Select(offer =>
@@ -153,9 +159,10 @@ query WhereToWatch($country: Country!, $language: Language!, $first: Int!, $filt
 
         private static int? GetInt(JsonElement item, string propertyName)
         {
-            return item.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number)
-                ? number
-                : null;
+            if (!item.TryGetProperty(propertyName, out var value)) return null;
+            if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number)) return number;
+            return value.ValueKind == JsonValueKind.String
+                && int.TryParse(value.GetString(), NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) ? parsed : (int?)null;
         }
 
     }

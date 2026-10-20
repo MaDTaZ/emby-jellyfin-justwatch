@@ -51,6 +51,7 @@ for (const host of ['Emby', 'Jellyfin']) {
         assert.equal(elements.get('.justWatchCountry').value, 'US');
         assert.equal(elements.get('.justWatchLanguage').value, 'en');
         assert.equal(elements.get('.justWatchResultLimit').value, 8);
+        elements.get('.justWatchSeerrUrl').value = 'https://seerr.example.com';
         elements.get('.justWatchCountry').value = 'ca';
         elements.get('.justWatchLanguage').value = 'EN';
         elements.get('.justWatchResultLimit').value = '12';
@@ -59,6 +60,7 @@ for (const host of ['Emby', 'Jellyfin']) {
         await new Promise(resolve => setImmediate(resolve));
         assert.equal(prevented, true);
         assert.equal(calls.updates.length, 1);
+        assert.equal(calls.updates[0].Options.SeerrUrl, 'https://seerr.example.com');
         assert.equal(calls.updates[0].Options.Country, 'CA');
         assert.equal(calls.updates[0].Options.Language, 'en');
         assert.equal(calls.updates[0].Options.ResultLimit, 12);
@@ -93,6 +95,13 @@ for (const host of ['Emby', 'Jellyfin']) {
         assert.match(result.innerHTML, /\$5.99/);
         assert.match(result.innerHTML, /https:\/\/example.com\/4k/);
         assert.match(result.innerHTML, /Disc &amp; Blu-ray/);
+    });
+    test(`${host}: exposes safe Seerr title links only when configured`, async () => {
+        const { result } = await render(host, [{Title: 'Arrival', SeerrUrl: 'https://seerr.example.com/movie/329865'}]);
+        assert.match(result.innerHTML, /Request in Seerr/);
+        assert.match(result.innerHTML, /https:\/\/seerr.example.com\/movie\/329865/);
+        assert.doesNotMatch((await render(host, [{Title: 'Arrival'}])).result.innerHTML, /Request in Seerr/);
+        assert.doesNotMatch((await render(host, [{Title: 'Arrival', SeerrUrl: 'javascript:alert(1)'}])).result.innerHTML, /Request in Seerr/);
     });
     test(`${host}: escapes titles and rejects script links`, async () => {
         const { result } = await render(host, [{ Title: '<script>alert(1)</script>', JustWatchUrl: 'javascript:alert(1)', Offers: [{ProviderName: '<img onerror=x>', Url: 'javascript:alert(1)'}] }]);

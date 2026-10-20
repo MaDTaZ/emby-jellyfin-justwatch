@@ -14,7 +14,7 @@ For Jellyfin 10.10.7 or 12.0-rc7, go to Dashboard → Plugins → Repositories, 
 https://raw.githubusercontent.com/MaDTaZ/emby-jellyfin-justwatch/main/manifest.json
 ```
 
-Refresh the plugin catalog, install **JustWatch**, then restart Jellyfin. The feed includes separate builds: 0.1.2.1 for Jellyfin 10.10.7 and 0.1.3.0 for Jellyfin 12.0-rc7. The 12.0 build targets .NET 10 and the exact 12.0.0-rc7 SDK. Other server generations need matching builds. Repository and package downloads are verified separately from live server installation, which still needs testing.
+Refresh the plugin catalog, install **JustWatch**, then restart Jellyfin. The feed includes separate builds: 0.1.3.1 for Jellyfin 10.10.7 and 0.1.4.0 for Jellyfin 12.0-rc7. The 12.0 build targets .NET 10 and the exact 12.0.0-rc7 SDK. Other server generations need matching builds. Repository and package downloads are verified separately from live server installation, which still needs testing.
 
 ### Emby stable and beta
 
@@ -89,13 +89,13 @@ The default build keeps SDK 4.8.10. To build against a different published SDK, 
 
 ## Release packaging
 
-Current Emby and Jellyfin 12 assemblies use version 0.1.3.0; Jellyfin 10.10.7 uses 0.1.2.1 so newer servers select the .NET 10 build. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
+Current Emby and Jellyfin 12 assemblies use version 0.1.4.0; Jellyfin 10.10.7 uses 0.1.3.1 so newer servers select the .NET 10 build. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
 
 ```bash
 python3 scripts/package-release.py
 ```
 
-This creates four flat ZIP archives, SHA-256 checksums, and a Jellyfin manifest containing the ZIP's MD5 checksum as required by Jellyfin. Upload the archives to release `v0.1.3` and commit the matching manifest. Update the script's version, tag, and timestamp for later releases.
+This creates four flat ZIP archives, SHA-256 checksums, and a Jellyfin manifest containing the ZIP's MD5 checksum as required by Jellyfin. Upload the archives to release `v0.1.4` and commit the matching manifest. Update the script's version, tag, and timestamp for later releases.
 
 ## 0.1.1 dashboard fix
 
@@ -123,3 +123,9 @@ The 0.1.2.0 build was loaded into the official portable Jellyfin 12.0-rc7 server
 Results now use responsive provider cards, clear price rows, theme-aware links, and a separate Disc & Blu-ray section. SD, HD, and 4K are grouped only when the provider, category, price, and destination match, so different prices and watch links remain available. Ten dashboard checks pass, including grouping without losing price or destination variants. The redesigned configuration page, saved settings, and live lookup were verified on the isolated Jellyfin 12.0-rc7 server.
 
 For the current four-package release, use the default version for Emby and Jellyfin 12, and override `Version`, `AssemblyVersion`, and `FileVersion` to 0.1.2.1 when building Jellyfin 10.10.7. Run `python3 scripts/package-release.py`. The separate `package-jellyfin12.py` script is retained for reproducing the historical 0.1.2 release.
+
+## Seerr integration (0.1.4)
+
+In JustWatch settings, enter your Seerr base URL in the optional **Seerr URL** field and Save. A copied `/login` URL also works; reverse-proxy subpaths are preserved. Search again after saving. Results with a TMDB ID show **Request in Seerr**, which opens that exact movie or TV page in a new tab. Sign in to Seerr and submit the request there using your own account and its existing permissions. No API key is required, no requests are submitted automatically, and no credentials are stored in the plugin. Leave the URL blank to disable the buttons. Titles without a TMDB ID do not get a guessed link.
+
+The release has 12 passing dashboard checks and shared-client checks for exact IDs, TV links, proxy paths, disabled integration, and unsafe URLs. On an isolated running Jellyfin 12.0-rc7 server, settings persisted and live lookups generated the expected Arrival movie and Breaking Bad TV links. Actual request submission remains in Seerr.

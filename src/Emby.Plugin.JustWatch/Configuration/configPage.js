@@ -22,6 +22,7 @@ define([], function () {
         ApiClient.getPluginConfiguration(pluginId).then(function (config) {
             config.Options = config.Options || {};
             query(page, '.justWatchCountry').value = config.Options.Country || 'US';
+            query(page, '.justWatchSeerrUrl').value = config.Options.SeerrUrl || '';
             query(page, '.justWatchLanguage').value = config.Options.Language || 'en';
             query(page, '.justWatchResultLimit').value = config.Options.ResultLimit || 8;
             Dashboard.hideLoadingMsg();
@@ -37,6 +38,7 @@ define([], function () {
             config.Options = config.Options || {};
             config.Options.Country = query(page, '.justWatchCountry').value.trim().toUpperCase() || 'US';
             config.Options.Language = query(page, '.justWatchLanguage').value.trim().toLowerCase() || 'en';
+            config.Options.SeerrUrl = query(page, '.justWatchSeerrUrl').value.trim();
             config.Options.ResultLimit = parseInt(query(page, '.justWatchResultLimit').value, 10) || 8;
 
             return ApiClient.updatePluginConfiguration(pluginId, config);
@@ -110,11 +112,14 @@ define([], function () {
                     }).join('') + '</div></section>';
             }).join('') || '<p class="jw-empty">No streaming offers returned for this region. Check JustWatch for details.</p>';
             const href = safeUrl(item.justwatchurl);
+            const seerrHref = safeUrl(item.seerrurl);
             return '<article class="jw-result"><header class="jw-result-header"><div><p class="jw-eyebrow">Availability in '
                 + escapeHtml(item.country) + '</p><h3>' + escapeHtml(item.title)
                 + (item.year ? ' <span class="jw-year">' + escapeHtml(item.year) + '</span>' : '') + '</h3></div>'
+                + '<div class="jw-actions">'
+                + (seerrHref ? '<a class="jw-source jw-seerr" target="_blank" rel="noopener noreferrer" href="' + seerrHref + '">Request in Seerr <span aria-hidden="true">↗</span></a>' : '')
                 + (href ? '<a class="jw-source" target="_blank" rel="noopener noreferrer" href="' + href + '">JustWatch <span aria-hidden="true">↗</span></a>' : '')
-                + '</header>' + offers + '<p class="jw-note">Availability and prices can change. Confirm details with the provider.</p></article>';
+                + '</div></header>' + offers + '<p class="jw-note">Availability and prices can change. Confirm details with the provider.</p></article>';
         }).join('');
     }
 

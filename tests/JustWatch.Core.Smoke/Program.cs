@@ -5,15 +5,22 @@ using JustWatch.Plugin.Core;
 
 var handler = new StubHandler();
 using var http = new HttpClient(handler);
-var client = new JustWatchClient(http, new JustWatchOptions { Country = "ca", Language = "en" });
+var client = new JustWatchClient(http, new JustWatchOptions { Country = "ca", Language = "en", SeerrUrl = "https://seerr.example.com/login" });
 handler.Body = """
-{"data":{"popularTitles":{"edges":[{"node":{"id":"tm205861","objectType":"MOVIE","content":{"title":"Arrival","originalReleaseYear":2016,"fullPath":"/ca/movie/arrival-2016"},"offers":[{"monetizationType":"RENT","presentationType":"HD","retailPrice":"CA$ 4.99","currency":"CAD","standardWebURL":"https://example.com/watch","package":{"packageId":2,"clearName":"Example"}},{"monetizationType":"BUY","standardWebURL":"javascript:alert(1)","package":{"packageId":3,"clearName":"Another"}}]}}]}}}
+{"data":{"popularTitles":{"edges":[{"node":{"id":"tm205861","objectType":"MOVIE","content":{"title":"Arrival","originalReleaseYear":2016,"fullPath":"/ca/movie/arrival-2016","externalIds":{"tmdbId":"329865"}},"offers":[{"monetizationType":"RENT","presentationType":"HD","retailPrice":"CA$ 4.99","currency":"CAD","standardWebURL":"https://example.com/watch","package":{"packageId":2,"clearName":"Example"}},{"monetizationType":"BUY","standardWebURL":"javascript:alert(1)","package":{"packageId":3,"clearName":"Another"}}]}}]}}}
 """;
 var results = await client.SearchAsync("Arrival", 2016, "movie", default);
 Check(results.Count == 1 && results[0].Country == "CA", "title and normalized country");
 Check(results[0].JustWatchUrl == "https://www.justwatch.com/ca/movie/arrival-2016", "title link");
 Check(results[0].Offers[0].ProviderId == "2" && results[0].Offers[0].Price == "CA$ 4.99", "numeric provider and price");
 Check(results[0].Offers[1].Url == null, "unsafe offer URL rejected");
+Check(results[0].TmdbId == 329865 && results[0].SeerrUrl == "https://seerr.example.com/movie/329865", "exact Seerr movie link");
+Check(SeerrLinks.ForTitle("https://example.com/seerr/login/", 1396, "SHOW") == "https://example.com/seerr/tv/1396", "TV and reverse-proxy base path");
+Check(SeerrLinks.ForTitle("javascript:alert(1)", 1, "MOVIE") == null, "reject non-HTTP Seerr URLs");
+Check(SeerrLinks.ForTitle("https://user:secret@example.com", 1, "MOVIE") == null, "reject credentials in Seerr URL");
+Check(SeerrLinks.ForTitle("https://example.com", null, "MOVIE") == null, "no link without matched TMDB ID");
+Check(SeerrLinks.ForTitle("", 1, "MOVIE") == null, "optional integration disabled by default");
+Check(SeerrLinks.ForTitle("https://example.com", 1, "UNKNOWN") == null, "no incorrect type fallback");
 using (var request = JsonDocument.Parse(handler.Request!))
 {
     Check(request.RootElement.GetProperty("variables").GetProperty("filter").GetProperty("objectTypes")[0].GetString() == "MOVIE", "movie filter");

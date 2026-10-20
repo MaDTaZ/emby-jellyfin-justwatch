@@ -8,6 +8,8 @@ namespace JustWatch.Plugin.Core
 
         public int ResultLimit { get; set; } = 8;
 
+        public string SeerrUrl { get; set; } = string.Empty;
+
         public string BaseUrl { get; set; } = "https://apis.justwatch.com";
     }
 }
