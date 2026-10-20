@@ -169,3 +169,7 @@ Search title, year, type, results, and result-derived provider chips clear on le
 A Clear button beside Search resets fields and results immediately and returns focus to the title. It also invalidates pending responses so an earlier search cannot repopulate the page after clearing.
 
 The catalog image uses a landscape mascot banner with the full character inside the card framing. The original square artwork remains in assets/where-to-watch-mascot-v1.png.
+
+## Per-search region dropdown (0.1.12)
+
+Search region defaults to All chosen countries and lists each configured Anywhere country separately with a readable name where available. Pick a single country without opening Settings or changing the saved default country. All chosen countries searches only the configured list. Jellyfin 12 uses 0.1.12.0; Jellyfin 10.10.7 uses 0.1.11.1.

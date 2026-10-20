@@ -93,7 +93,17 @@ for (const host of ['Emby', 'Jellyfin']) {
     });
     test(`${host}: Anywhere is explicit, passes scope, labels countries and currencies`, async () => {
         const { elements, events, calls, result } = await render(host, [{Title:'Arrival', Country:'CA', Offers:[{ProviderName:'Example',Price:'$4.99',Currency:'CAD'}]}]);
-        assert.equal(calls.searches[0].anywhere, false);
+        assert.equal(calls.searches[0].anywhere, true);
+        assert.equal(calls.searches[0].country, null);
+        const menu = elements.get('.justWatchSearchScope');
+        assert.match(menu.innerHTML, /All chosen countries/);
+        assert.match(menu.innerHTML, /Canada \(CA\)/);
+        assert.match(menu.innerHTML, /United States \(US\)/);
+        menu.value = 'CA';
+        events['.justWatchSearchButtonclick']();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(calls.searches.at(-1).anywhere, false);
+        assert.equal(calls.searches.at(-1).country, 'CA');
         elements.get('.justWatchSearchScope').value = 'anywhere';
         events['.justWatchSearchButtonclick']();
         await new Promise(resolve => setImmediate(resolve));
@@ -142,7 +152,7 @@ for (const host of ['Emby', 'Jellyfin']) {
         assert.equal(elements.get('.justWatchLanguage').value, 'en');
         assert.equal(elements.get('.justWatchResultLimit').value, 8);
         assert.equal(elements.get('.justWatchAnywhereCountries').value, 'CA,US,GB,AU');
-        assert.equal(elements.get('.justWatchSearchScope').options[0].textContent, 'My country (US)');
+        assert.equal(elements.get('.justWatchSearchScope').value, 'anywhere');
         elements.get('.justWatchAnywhereCountries').value = 'ca, US,ca,gb';
         elements.get('.justWatchSeerrApiKey').value = 'test-key';
         elements.get('.justWatchSeerrUrl').value = 'https://seerr.example.com';

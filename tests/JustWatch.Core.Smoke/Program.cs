@@ -26,6 +26,9 @@ using (var request = JsonDocument.Parse(handler.Request!))
     Check(request.RootElement.GetProperty("variables").GetProperty("filter").GetProperty("objectTypes")[0].GetString() == "MOVIE", "movie filter");
 }
 var anywhereClient = new JustWatchClient(http, new JustWatchOptions { AnywhereCountries = "ca,US,ca,gb", SeerrUrl = "https://seerr.example.com", SeerrApiKey = "test-key" });
+var overrideResults = await anywhereClient.SearchCountryAsync("GB", "Arrival", 2016, "movie", default);
+Check(overrideResults.Count == 1 && overrideResults[0].Country == "GB" && overrideResults[0].CanRequestInSeerr, "single-country override preserves Seerr integration");
+Check((await anywhereClient.SearchAsync("Arrival", 2016, "movie", default))[0].Country == "US", "country override does not mutate saved default");
 handler.Countries.Clear();
 var anywhere = await anywhereClient.SearchAcrossCountriesAsync("Arrival", 2016, "movie", default);
 Check(string.Join(",", anywhere.Select(result => result.Country)) == "CA,US,GB", "Anywhere retains distinct normalized country results in chosen order");

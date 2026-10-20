@@ -71,6 +71,19 @@ namespace JustWatch.Plugin.Core
                 .ToList();
         }
 
+        public Task<IReadOnlyList<JustWatchSearchResult>> SearchCountryAsync(
+            string country, string title, int? year, string? mediaType, CancellationToken cancellationToken)
+        {
+            if (!IsCode(country)) throw new ArgumentException("Country must be a two-letter code.", nameof(country));
+            // Per-search overrides must not change the shared saved configuration.
+            var options = new JustWatchOptions
+            {
+                Country = country, Language = _options.Language, ResultLimit = _options.ResultLimit,
+                BaseUrl = _options.BaseUrl, SeerrUrl = _options.SeerrUrl, SeerrApiKey = _options.SeerrApiKey
+            };
+            return new JustWatchClient(_httpClient, options).SearchAsync(title, year, mediaType, cancellationToken);
+        }
+
         public async Task<IReadOnlyList<JustWatchSearchResult>> SearchAcrossCountriesAsync(
             string title, int? year, string? mediaType, CancellationToken cancellationToken)
         {

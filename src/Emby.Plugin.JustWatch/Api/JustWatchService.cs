@@ -19,6 +19,8 @@ namespace Emby.Plugin.JustWatch.Api
         public string? MediaType { get; set; }
 
         public bool Anywhere { get; set; }
+
+        public string? Country { get; set; }
     }
 
     [Authenticated(Roles = "Admin")]
@@ -63,6 +65,7 @@ namespace Emby.Plugin.JustWatch.Api
             var client = new JustWatchClient(Http, options);
 
             return request.Anywhere ? client.SearchAcrossCountriesAsync(request.Title, request.Year, request.MediaType, CancellationToken.None)
+                : !string.IsNullOrWhiteSpace(request.Country) ? client.SearchCountryAsync(request.Country!, request.Title, request.Year, request.MediaType, CancellationToken.None)
                 : client.SearchAsync(request.Title, request.Year, request.MediaType, CancellationToken.None);
         }
     }

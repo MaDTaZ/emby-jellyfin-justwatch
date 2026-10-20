@@ -17,13 +17,24 @@ define([], function () {
         });
     }
 
+    function populateSearchRegions(page, countries, reset) {
+        const select = query(page, '.justWatchSearchScope');
+        const previous = reset ? 'anywhere' : select.value;
+        const codes = Array.from(new Set(String(countries || 'CA,US,GB,AU').split(',').map(function (code) { return code.trim().toUpperCase(); }))).filter(function (code) { return /^[A-Z]{2}$/.test(code); });
+        const names = { CA: 'Canada', US: 'United States', GB: 'United Kingdom', AU: 'Australia', FR: 'France', DE: 'Germany', IT: 'Italy', ES: 'Spain', NZ: 'New Zealand', IE: 'Ireland', IN: 'India', JP: 'Japan' };
+        select.innerHTML = '<option value="anywhere">All chosen countries</option>' + codes.map(function (code) {
+            return '<option value="' + code + '">' + escapeHtml(names[code] ? names[code] + ' (' + code + ')' : code) + '</option>';
+        }).join('');
+        select.value = codes.indexOf(previous) >= 0 ? previous : 'anywhere';
+    }
+
     function loadConfig(page) {
         Dashboard.showLoadingMsg();
         ApiClient.getPluginConfiguration(pluginId).then(function (config) {
             config.Options = config.Options || {};
             query(page, '.justWatchCountry').value = config.Options.Country || 'US';
             query(page, '.justWatchAnywhereCountries').value = config.Options.AnywhereCountries || 'CA,US,GB,AU';
-            query(page, '.justWatchSearchScope').options[0].textContent = 'My country (' + (config.Options.Country || 'US') + ')';
+            populateSearchRegions(page, config.Options.AnywhereCountries, true);
             query(page, '.justWatchSeerrApiKey').value = config.Options.SeerrApiKey || '';
             query(page, '.justWatchSeerrUrl').value = config.Options.SeerrUrl || '';
             query(page, '.justWatchLanguage').value = config.Options.Language || 'en';
@@ -46,7 +57,6 @@ define([], function () {
             config.Options = config.Options || {};
             config.Options.Country = query(page, '.justWatchCountry').value.trim().toUpperCase() || 'US';
             config.Options.AnywhereCountries = countries.join(',');
-            query(page, '.justWatchSearchScope').options[0].textContent = 'My country (' + config.Options.Country + ')';
             config.Options.Language = query(page, '.justWatchLanguage').value.trim().toLowerCase() || 'en';
             config.Options.SeerrApiKey = query(page, '.justWatchSeerrApiKey').value.trim();
             config.Options.SeerrUrl = query(page, '.justWatchSeerrUrl').value.trim();
@@ -55,6 +65,7 @@ define([], function () {
             return ApiClient.updatePluginConfiguration(pluginId, config);
         }).then(function (result) {
             Dashboard.hideLoadingMsg();
+            populateSearchRegions(page, countries.join(','), false);
             Dashboard.processPluginConfigurationUpdateResult(result);
         }).catch(function () {
             Dashboard.hideLoadingMsg();
@@ -341,7 +352,8 @@ define([], function () {
             title: title,
             year: year || null,
             mediaType: mediaType || null,
-            anywhere: query(page, '.justWatchSearchScope').value === 'anywhere'
+            anywhere: query(page, '.justWatchSearchScope').value === 'anywhere',
+            country: query(page, '.justWatchSearchScope').value === 'anywhere' ? null : query(page, '.justWatchSearchScope').value
         });
 
         const generation = (page.searchGeneration || 0) + 1;

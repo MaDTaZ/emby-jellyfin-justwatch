@@ -42,12 +42,14 @@ namespace Jellyfin.Plugin.JustWatch.Api
             [FromQuery] int? year,
             [FromQuery] string? mediaType,
             [FromQuery] bool anywhere,
+            [FromQuery] string? country,
             CancellationToken cancellationToken)
         {
             var options = Plugin.Instance?.Configuration.Options ?? new JustWatchOptions();
             var client = new JustWatchClient(Http, options);
 
             return anywhere ? client.SearchAcrossCountriesAsync(title, year, mediaType, cancellationToken)
+                : !string.IsNullOrWhiteSpace(country) ? client.SearchCountryAsync(country, title, year, mediaType, cancellationToken)
                 : client.SearchAsync(title, year, mediaType, cancellationToken);
         }
     }
