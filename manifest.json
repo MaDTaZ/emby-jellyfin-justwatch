@@ -9,19 +9,19 @@
     "category": "General",
     "versions": [
       {
-        "version": "0.1.12.0",
-        "changelog": "Search region now lists All chosen countries and each configured country individually. Default to All chosen countries; selecting one country does not change saved settings.",
+        "version": "0.1.13.0",
+        "changelog": "Combine matching titles into country-tabbed cards, retain successful countries with failure warnings, test saved Seerr credentials, and safely back up and clean inactive older Jellyfin entries.",
         "targetAbi": "12.0.0.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.12/JustWatch-Jellyfin-12.0-rc7.zip",
-        "checksum": "f62bb0188d8a560aaf71212615b9da59",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.13/JustWatch-Jellyfin-12.0-rc7.zip",
+        "checksum": "78e5f950f7b3b39a235b6c22d0a0c3bc",
         "timestamp": "2026-10-20T00:00:00Z"
       },
       {
-        "version": "0.1.11.1",
-        "changelog": "Search region now lists All chosen countries and each configured country individually. Default to All chosen countries; selecting one country does not change saved settings.",
+        "version": "0.1.12.1",
+        "changelog": "Combine matching titles into country-tabbed cards, retain successful countries with failure warnings, test saved Seerr credentials, and safely back up and clean inactive older Jellyfin entries.",
         "targetAbi": "10.10.7.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.12/JustWatch-Jellyfin-10.10.7.zip",
-        "checksum": "2d44adf19debfc7854cbc0e893c9f50b",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.13/JustWatch-Jellyfin-10.10.7.zip",
+        "checksum": "0399bb6183ca6cda9f508dee22d0a2c4",
         "timestamp": "2026-10-20T00:00:00Z"
       }
     ]

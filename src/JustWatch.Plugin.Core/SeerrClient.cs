@@ -61,6 +61,17 @@ namespace JustWatch.Plugin.Core
             return request;
         }
 
+        public async Task<SeerrResult> TestConnectionAsync(CancellationToken token)
+        {
+            using var request = CreateRequest(HttpMethod.Get, "auth/me");
+            using var response = await _http.SendAsync(request, token).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode) return new SeerrResult { Message = Failure(response.StatusCode) };
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+            if (!document.RootElement.TryGetProperty("id", out var id) || id.ValueKind != JsonValueKind.Number || !id.TryGetInt32(out var number) || number <= 0)
+                return new SeerrResult { Message = "Seerr returned an unexpected response. Check the saved URL." };
+            return new SeerrResult { Success = true, Message = "Connected to Seerr. The saved URL and API key are valid. Request approval rules still apply." };
+        }
+
         private static void Validate(int id, string type)
         {
             if (id <= 0 || (type != "movie" && type != "tv")) throw new ArgumentException("Select a valid movie or TV show.");

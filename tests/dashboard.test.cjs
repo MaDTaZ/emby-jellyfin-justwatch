@@ -4,7 +4,8 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 
 async function render(host, results, fail = false, details = {State: "notRequested", CanRequest: true, Seasons: [{Number:1,Name:"Season 1"},{Number:2,Name:"Season 2"}]}) {
-    const cards = results.filter(r => r.CanRequestInSeerr || r.canRequestInSeerr).map(r => {
+    const rows = Array.isArray(results) ? results : results.Results || results.results || [];
+    const cards = rows.filter(r => r.CanRequestInSeerr || r.canRequestInSeerr).map(r => {
         const badge = {textContent: "", dataset: {}};
         const panel = {textContent: "", innerHTML: ""};
         const card = {querySelector: selector => selector === ".jw-seerr-status" ? badge : panel, badge};
@@ -48,6 +49,7 @@ async function render(host, results, fail = false, details = {State: "notRequest
                 calls.ajax.push(options);
                 if (fail) return Promise.reject(new Error('offline'));
                 if (options.type === 'POST') return Promise.resolve({ Success: true, Message: 'Request accepted by Seerr.' });
+                if (String(options.url).includes('Seerr/Test')) return Promise.resolve({Success:true,Message:'Connected to Seerr.'});
                 if (String(options.url).includes('Seerr/Details')) return details === null ? Promise.reject(new Error('status offline')) : Promise.resolve(details);
                 return Promise.resolve(results);
             }
@@ -61,6 +63,60 @@ async function render(host, results, fail = false, details = {State: "notRequest
     return { result: elements.get('.justWatchResults'), button: elements.get('.justWatchSearchButton'), elements, events, calls, page, cards };
 }
 for (const host of ['Emby', 'Jellyfin']) {
+    test(`${host}: country switching preserves request controls and makes no network calls`, async () => {
+        const {events,calls}=await render(host,[]);
+        const panels=[{dataset:{countryPanel:'CA'},hidden:false},{dataset:{countryPanel:'US'},hidden:true}];
+        const tabs=['CA','US'].map(code=>({dataset:{countrySelect:code},setAttribute(name,value){this[name]=value;}}));
+        const card={querySelectorAll:selector=>selector==='[data-country-select]'?tabs:panels};
+        tabs.forEach(tab=>tab.closest=()=>card);
+        const before=calls.ajax.length;
+        events['.justWatchResultsclick']({target:{closest:selector=>selector==='button[data-country-select]'?tabs[1]:null}});
+        assert.equal(panels[0].hidden,true);
+        assert.equal(panels[1].hidden,false);
+        assert.equal(tabs[1]['aria-pressed'],'true');
+        assert.equal(calls.ajax.length,before);
+    });
+    test(`${host}: same exact title across countries renders one card with separate prices and tabs`, async () => {
+        const resultRows = [
+            {Title:'Arrival',TmdbId:329865,ObjectType:'MOVIE',Country:'CA',CanRequestInSeerr:true,Offers:[{ProviderName:'Example',Price:'4.99',Currency:'CAD'}]},
+            {Title:'Arrival',TmdbId:329865,ObjectType:'MOVIE',Country:'US',CanRequestInSeerr:true,Offers:[{ProviderName:'Example',Price:'3.99',Currency:'USD'}]},
+            {Title:'Arrival',TmdbId:999,ObjectType:'MOVIE',Country:'CA',Offers:[]}
+        ];
+        const { result } = await render(host, resultRows);
+        assert.equal((result.innerHTML.match(/<article class="jw-result">/g)||[]).length,2,'different TMDB IDs must not merge');
+        assert.equal((result.innerHTML.match(/class="jw-source jw-seerr jw-direct-request"/g)||[]).length,1);
+        assert.match(result.innerHTML,/data-country-select="CA" aria-pressed="true"/);
+        assert.match(result.innerHTML,/data-country-panel="US" hidden/);
+        assert.match(result.innerHTML,/4.99 · CAD/);
+        assert.match(result.innerHTML,/3.99 · USD/);
+    });
+    test(`${host}: partial country failures retain successful cards and show escaped warnings`, async () => {
+        const { result } = await render(host,{Results:[{Title:'Arrival',Country:'CA',Offers:[]}],FailedCountries:['US','<GB>']});
+        assert.match(result.innerHTML,/Could not check US, &lt;GB&gt;/);
+        assert.match(result.innerHTML,/Arrival/);
+        assert.match(result.innerHTML,/only successful countries/);
+    });
+    test(`${host}: connection test uses a GET without exposing key or creating requests`, async () => {
+        const { elements, events, calls } = await render(host,[]);
+        const before = calls.ajax.length;
+        await events['.justWatchTestSeerrclick'].call(elements.get('.justWatchTestSeerr'));
+        const request = calls.ajax[before];
+        assert.equal(request.type,'GET');
+        assert.equal(request.url,'/JustWatch/Seerr/Test');
+        assert.equal(request.data,undefined);
+        assert.equal(elements.get('.justWatchSeerrFeedback').textContent,'Connected to Seerr.');
+        assert.equal(calls.ajax.filter(call => call.type==='POST').length,0);
+    });
+    if(host==='Jellyfin') test('Jellyfin: cleanup requires explicit selection before POST', async () => {
+        const {elements,events,calls}=await render(host,[]);
+        events['.justWatchCleanupclick'].call(elements.get('.justWatchCleanup'));
+        assert.equal(calls.ajax.filter(call=>call.type==='POST').length,0);
+        elements.get('.justWatchCleanupConfirm').checked=true;
+        events['.justWatchCleanupclick'].call(elements.get('.justWatchCleanup'));
+        await new Promise(resolve=>setImmediate(resolve));
+        assert.equal(calls.ajax.at(-1).url,'/JustWatch/Maintenance/Cleanup');
+        assert.equal(calls.ajax.at(-1).type,'POST');
+    });
     test(`${host}: Clear resets the search immediately and focuses title without another request`, async () => {
         const { page, elements, events, calls } = await render(host, [{Title:'Arrival',Offers:[]}]);
         const before = calls.ajax.length;

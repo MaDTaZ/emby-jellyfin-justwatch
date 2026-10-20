@@ -86,28 +86,37 @@ namespace JustWatch.Plugin.Core
 
         public async Task<IReadOnlyList<JustWatchSearchResult>> SearchAcrossCountriesAsync(
             string title, int? year, string? mediaType, CancellationToken cancellationToken)
+            => (await SearchAcrossCountriesDetailedAsync(title, year, mediaType, cancellationToken).ConfigureAwait(false)).Results;
+
+        public async Task<JustWatchSearchResponse> SearchAcrossCountriesDetailedAsync(
+            string title, int? year, string? mediaType, CancellationToken cancellationToken)
         {
             var countries = (_options.AnywhereCountries ?? string.Empty).Split(',')
                 .Select(value => value.Trim().ToUpperInvariant()).Distinct().ToArray();
             if (countries.Length < 1 || countries.Length > 6 || countries.Any(value => !IsCode(value)))
                 throw new ArgumentException("Choose one to six comma-separated two-letter country codes for Anywhere.");
-
             var results = new List<JustWatchSearchResult>();
-            // Bound concurrency and retain separate country results, prices, and watch links.
+            var failed = new List<string>();
             for (var index = 0; index < countries.Length; index += 2)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var batch = countries.Skip(index).Take(2).Select(country =>
-                    new JustWatchClient(_httpClient, new JustWatchOptions
+                var batch = countries.Skip(index).Take(2).Select(async country =>
+                {
+                    try
                     {
-                        Country = country, Language = _options.Language, ResultLimit = _options.ResultLimit,
-                        BaseUrl = _options.BaseUrl, SeerrUrl = _options.SeerrUrl, SeerrApiKey = _options.SeerrApiKey
-                    }).SearchAsync(title, year, mediaType, cancellationToken));
-                // A failed country fails the search rather than presenting incomplete coverage as complete.
+                        var found = await SearchCountryAsync(country, title, year, mediaType, cancellationToken).ConfigureAwait(false);
+                        return new JustWatchSearchResponse { Results = found, SearchedCountries = new[] { country } };
+                    }
+                    catch (Exception ex) when (!cancellationToken.IsCancellationRequested
+                        && (ex is HttpRequestException || ex is TaskCanceledException || ex is JsonException))
+                    { return new JustWatchSearchResponse { FailedCountries = new[] { country } }; }
+                });
                 var responses = await Task.WhenAll(batch).ConfigureAwait(false);
-                foreach (var response in responses) results.AddRange(response);
+                foreach (var response in responses) { results.AddRange(response.Results); failed.AddRange(response.FailedCountries); }
             }
-            return results;
+            cancellationToken.ThrowIfCancellationRequested();
+            if (failed.Count == countries.Length) throw new HttpRequestException("All selected countries failed. Try again later.");
+            return new JustWatchSearchResponse { Results = results, FailedCountries = failed, SearchedCountries = countries.Except(failed).ToArray() };
         }
 
         private const string SearchQuery = @"

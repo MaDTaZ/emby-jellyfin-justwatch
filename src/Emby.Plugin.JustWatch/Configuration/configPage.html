@@ -83,6 +83,11 @@
 .justWatchConfigurationPage .jw-filter { padding: 9px 13px; border: 1px solid rgba(140,150,165,.3); border-radius: 20px; color: inherit; background: transparent; font: inherit; font-size: .85em; cursor: pointer; }
 .justWatchConfigurationPage .jw-filter[aria-pressed="true"] { border-color: #00a4dc; background: rgba(0,164,220,.18); }
 .justWatchConfigurationPage .jw-filter:focus-visible { outline: 2px solid #00a4dc; outline-offset: 3px; }
+.justWatchConfigurationPage .jw-country-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.justWatchConfigurationPage .jw-region-label { margin-top: 18px; opacity: .8; font-size: .9em; }
+.justWatchConfigurationPage .jw-region-link { color: #00a4dc; }
+.justWatchConfigurationPage .jw-warning { padding: 16px; border: 1px solid rgba(225,175,70,.4); border-radius: 10px; background: rgba(225,175,70,.08); line-height: 1.5; }
+.justWatchConfigurationPage .jw-maintenance { margin: 0 22px 22px; padding-top: 12px; border-top: 1px solid rgba(140,150,165,.22); max-width: 740px; }
 </style>
 
   <div data-role="content">
@@ -149,6 +154,9 @@
             <input is="emby-input" class="justWatchSeerrApiKey" label="Seerr API key (optional)" type="password" autocomplete="new-password" />
             <div class="fieldDescription">Enable direct requests without a Seerr login. Requests use the API key account and its approval settings. Only server administrators can send direct requests.</div>
           </div>
+          <button is="emby-button" type="button" class="raised justWatchTestSeerr">Test Seerr connection</button>
+          <p class="fieldDescription">Save your URL and API key before testing. This checks your account without creating a request.</p>
+          <p class="justWatchSeerrFeedback" role="status" aria-live="polite"></p>
           <button is="emby-button" type="submit" class="raised button-submit block">
             <span>Save settings</span>
           </button>

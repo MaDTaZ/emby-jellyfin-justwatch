@@ -2,6 +2,13 @@ using System.Collections.Generic;
 
 namespace JustWatch.Plugin.Core
 {
+    public sealed class JustWatchSearchResponse
+    {
+        public IReadOnlyList<JustWatchSearchResult> Results { get; set; } = new List<JustWatchSearchResult>();
+        public IReadOnlyList<string> FailedCountries { get; set; } = new List<string>();
+        public IReadOnlyList<string> SearchedCountries { get; set; } = new List<string>();
+    }
+
     public sealed class JustWatchSearchResult
     {
         public string Id { get; set; } = string.Empty;

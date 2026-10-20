@@ -10,6 +10,14 @@ static class SeerrSmoke
         var handler = new FakeSeerr();
         using var http = new HttpClient(handler);
         var client = new SeerrClient(http, new JustWatchOptions { SeerrUrl = "https://example.com/seerr/login", SeerrApiKey = "test-api-key" });
+        Check((await client.TestConnectionAsync(default)).Success, "authenticated connection test");
+        Check(handler.LastPath=="/seerr/api/v1/auth/me" && handler.Posts==0,"connection test reads authenticated account and never posts");
+        handler.TestStatus=HttpStatusCode.Unauthorized;
+        var failedTest=await client.TestConnectionAsync(default);
+        Check(!failedTest.Success && !failedTest.Message.Contains("test-api-key"),"connection authentication errors sanitized");
+        handler.TestStatus=HttpStatusCode.Redirect;
+        Check(!(await client.TestConnectionAsync(default)).Success,"connection redirects rejected");
+        handler.TestStatus=HttpStatusCode.OK;
         var movie = await client.RequestAsync(new SeerrRequest { TmdbId = 329865, MediaType = "movie" }, default);
         Check(movie.Success && movie.Message.Contains("approval"), "movie pending approval");
         Check(handler.LastPath == "/seerr/api/v1/request" && handler.Key == "test-api-key", "API path and server-side key header");
@@ -67,10 +75,12 @@ static class SeerrSmoke
         public HttpStatusCode PostStatus = HttpStatusCode.Created;
         public string? LastBody, LastPath, Key;
         public int Posts;
+        public HttpStatusCode TestStatus=HttpStatusCode.OK;
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
         {
             Key = request.Headers.GetValues("X-Api-Key").Single();
             LastPath = request.RequestUri!.AbsolutePath;
+            if(LastPath.EndsWith("/auth/me")) return Json(TestStatus,"{\"id\":1}");
             if (request.Method == HttpMethod.Get) return Json(HttpStatusCode.OK, JsonSerializer.Serialize(new {
                 mediaInfo = new { status = Available ? 5 : MediaStatus, seasons = MixedSeasons ? new[] {new {seasonNumber=1,status=5}} : Array.Empty<object>() },
                 seasons = new[] {new {seasonNumber=1,name="Season 1"}, new {seasonNumber=2,name="Season 2"}}

@@ -1,5 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+using System.IO.Compression;
+using MediaBrowser.Common.Plugins;
+using MediaBrowser.Model.Plugins;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,8 +41,47 @@ namespace Jellyfin.Plugin.JustWatch.Api
             { return BadRequest(new SeerrResult { Success = false, Message = ex is ArgumentException || ex is InvalidOperationException ? ex.Message : "Could not contact Seerr. Check its URL and API key, then try again." }); }
         }
 
+        [Authorize(Policy = Policies.RequiresElevation)]
+        [HttpGet("Seerr/Test")]
+        public async Task<ActionResult<SeerrResult>> TestSeerr(CancellationToken token)
+        {
+            try { return await new SeerrClient(SeerrHttp, Plugin.Instance!.Configuration.Options).TestConnectionAsync(token); }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is HttpRequestException || ex is TaskCanceledException || ex is System.Text.Json.JsonException)
+            { return BadRequest(new SeerrResult { Message = ex is InvalidOperationException ? ex.Message : "Could not connect to Seerr. Check the saved URL and API key." }); }
+        }
+
+        [Authorize(Policy = Policies.RequiresElevation)]
+        [HttpPost("Maintenance/Cleanup")]
+        public ActionResult<SeerrResult> Cleanup([FromServices] IPluginManager manager)
+        {
+            var current = Plugin.Instance;
+            if (current == null) return BadRequest(new SeerrResult { Message = "The active plugin is not ready." });
+            var version = current.GetType().Assembly.GetName().Version!;
+            var active = manager.Plugins.FirstOrDefault(plugin => ReferenceEquals(plugin.Instance, current));
+            if (active == null) return BadRequest(new SeerrResult { Message = "Could not identify the running plugin. Nothing was removed." });
+            var backupDirectory = Path.Combine(Directory.GetParent(active.Path)!.Parent!.FullName, "where-to-watch-backups");
+            var old = manager.Plugins.Where(plugin => LegacyPluginPolicy.CanArchive(plugin.Id, current.Id, plugin.Version,
+                version, plugin.Name, plugin.Manifest.Status.ToString(), plugin.Instance != null)).ToArray();
+            var removed = 0;
+            try
+            {
+                foreach (var plugin in old)
+                {
+                    if ((System.IO.File.GetAttributes(plugin.Path) & FileAttributes.ReparsePoint) != 0) continue;
+                    Directory.CreateDirectory(backupDirectory);
+                    var backup = Path.Combine(backupDirectory, "plugin-" + plugin.Version + "-" + Guid.NewGuid().ToString("N") + ".zip");
+                    ZipFile.CreateFromDirectory(plugin.Path, backup);
+                    if (manager.RemovePlugin(plugin)) removed++;
+                }
+                return new SeerrResult { Success = true, Message = removed == 0 ? "No inactive older entries were found. Nothing was removed."
+                    : "Removed " + removed + " inactive older entries after backing them up in where-to-watch-backups beside the plugins folder. Settings were retained. Refresh Plugins; restart Jellyfin if an old entry remains." };
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            { return BadRequest(new SeerrResult { Message = "Cleanup stopped after removing " + removed + " entries. Existing backups and settings were retained. Check plugin-folder permissions." }); }
+        }
+
         [HttpGet("Search")]
-        public Task<IReadOnlyList<JustWatchSearchResult>> Search(
+        public async Task<JustWatchSearchResponse> Search(
             [FromQuery] string title,
             [FromQuery] int? year,
             [FromQuery] string? mediaType,
@@ -48,9 +92,10 @@ namespace Jellyfin.Plugin.JustWatch.Api
             var options = Plugin.Instance?.Configuration.Options ?? new JustWatchOptions();
             var client = new JustWatchClient(Http, options);
 
-            return anywhere ? client.SearchAcrossCountriesAsync(title, year, mediaType, cancellationToken)
-                : !string.IsNullOrWhiteSpace(country) ? client.SearchCountryAsync(country, title, year, mediaType, cancellationToken)
-                : client.SearchAsync(title, year, mediaType, cancellationToken);
+            if (anywhere) return await client.SearchAcrossCountriesDetailedAsync(title, year, mediaType, cancellationToken);
+            var results = !string.IsNullOrWhiteSpace(country) ? await client.SearchCountryAsync(country, title, year, mediaType, cancellationToken)
+                : await client.SearchAsync(title, year, mediaType, cancellationToken);
+            return new JustWatchSearchResponse { Results = results, SearchedCountries = new[] { country ?? options.Country } };
         }
     }
 }

@@ -175,7 +175,8 @@ define([], function () {
                 });
                 section.hidden = count === 0;
                 section.querySelector('.jw-count').textContent = count + (count === 1 ? ' provider' : ' providers');
-                visible += count;
+                const panel = section.closest ? section.closest('.jw-country-panel') : null;
+                if (!panel || !panel.hidden) visible += count;
             });
             card.querySelector('.jw-filter-empty').hidden = !selected.size || visible > 0;
         });
@@ -195,17 +196,8 @@ define([], function () {
         applyProviderFilters(page);
     }
 
-    function renderResults(page, results) {
-        page.providerResults = results || [];
-        renderProviderFilters(page, results);
-        const container = query(page, '.justWatchResults');
-        if (!results || !results.length) {
-            container.innerHTML = '<p class="jw-empty">No matching titles found. Try another title or omit the year.</p>';
-            return;
-        }
+    function renderCountryOffers(item) {
         const categories = ['Subscription', 'Free', 'Free with ads', 'Rent', 'Buy', 'Disc & Blu-ray', 'Other offers'];
-        container.innerHTML = results.map(function (raw) {
-            const item = normalize(raw);
             const groups = new Map();
             (item.offers || []).forEach(function (rawOffer) {
                 const offer = normalize(rawOffer);
@@ -244,6 +236,64 @@ define([], function () {
                             }).join('') + '</div></article>';
                     }).join('') + '</div></section>';
             }).join('') || '<p class="jw-empty">No streaming offers returned for this region. Check JustWatch for details.</p>';
+        return offers;
+    }
+
+    function groupCountryResults(results) {
+        const groups = new Map();
+        results.forEach(function (raw, index) {
+            const item = normalize(raw);
+            const type = String(item.objecttype || '').toUpperCase();
+            const key = Number(item.tmdbid) > 0 ? type + ':tmdb:' + Number(item.tmdbid) : item.id ? type + ':jw:' + item.id : 'unmatched:' + index;
+            if (!groups.has(key)) groups.set(key, Object.assign({}, item, { regions: [] }));
+            const group = groups.get(key);
+            if (!group.regions.some(function (region) { return region.country === item.country; })) group.regions.push(item);
+        });
+        return Array.from(groups.values());
+    }
+
+    function selectCountry(page, event) {
+        const button = event.target.closest('button[data-country-select]');
+        if (!button || !button.dataset.countrySelect) return;
+        const card = button.closest('.jw-result');
+        card.querySelectorAll('[data-country-select]').forEach(function (tab) { tab.setAttribute('aria-pressed', String(tab === button)); });
+        card.querySelectorAll('.jw-country-panel').forEach(function (panel) { panel.hidden = panel.dataset.countryPanel !== button.dataset.countrySelect; });
+        applyProviderFilters(page);
+    }
+
+    function runSettingsCheck(page, button, path, method, feedback) {
+        button.disabled = true;
+        const target = query(page, feedback);
+        target.textContent = 'Checking…';
+        return ApiClient.ajax({ type: method, url: ApiClient.getUrl(path), dataType: 'json' }).then(function (raw) {
+            const result = normalize(raw);
+            target.textContent = result.message || 'The check finished.';
+        }).catch(function () {
+            target.textContent = 'Could not complete the check. Confirm your saved settings and administrator access.';
+        }).then(function () { button.disabled = false; });
+    }
+
+    function renderResults(page, results) {
+        const response = Array.isArray(results) ? {results: results} : normalize(results || {});
+        results = response.results || [];
+        const failed = response.failedcountries || [];
+        const warning = failed.length ? '<p class="jw-warning" role="status">Could not check ' + escapeHtml(failed.join(', ')) + '. Results below cover only successful countries. Try searching the unavailable countries again.</p>' : '';
+        page.providerResults = results || [];
+        renderProviderFilters(page, results);
+        const container = query(page, '.justWatchResults');
+        if (!results || !results.length) {
+            container.innerHTML = warning + '<p class="jw-empty">No matching titles found. Try another title or omit the year.</p>';
+            return;
+        }
+        container.innerHTML = warning + groupCountryResults(results).map(function (raw) {
+            const item = normalize(raw);
+            const offers = (item.regions.length > 1 ? '<div class="jw-country-tabs" aria-label="Offer country">' + item.regions.map(function (region, index) {
+                return '<button type="button" class="jw-filter" data-country-select="' + escapeHtml(region.country) + '" aria-pressed="' + (index === 0) + '">' + escapeHtml(region.country) + '</button>';
+            }).join('') + '</div>' : '') + item.regions.map(function (region, index) {
+                const link = safeUrl(region.justwatchurl);
+                return '<div class="jw-country-panel" data-country-panel="' + escapeHtml(region.country) + '"' + (index ? ' hidden' : '') + '><p class="jw-region-label">Offers in ' + escapeHtml(region.country)
+                    + (link ? ' · <a class="jw-region-link" target="_blank" rel="noopener noreferrer" href="' + link + '">Check JustWatch ↗</a>' : '') + '</p>' + renderCountryOffers(region) + '</div>';
+            }).join('');
             const href = safeUrl(item.justwatchurl);
             const seerrHref = safeUrl(item.seerrurl);
             const type = String(item.objecttype || '').toUpperCase() === 'SHOW' ? 'tv' : 'movie';
@@ -251,12 +301,11 @@ define([], function () {
             const poster = safeUrl(item.posterurl);
             return '<article class="jw-result"><header class="jw-result-header"><div class="jw-heading-content"><div class="jw-poster-wrap"><span class="jw-poster-fallback" aria-hidden="true">' + escapeHtml(String(item.title || '?').charAt(0)) + '</span>'
                 + (poster ? '<img class="jw-poster" src="' + poster + '" alt="Poster for ' + escapeHtml(item.title) + '" loading="lazy" decoding="async" referrerpolicy="no-referrer">' : '') + '</div><div class="jw-title-content"><p class="jw-eyebrow">Availability in '
-                + escapeHtml(item.country) + '</p><h3>' + escapeHtml(item.title)
+                + escapeHtml(item.regions.map(function (region) { return region.country; }).join(' · ')) + '</p><h3>' + escapeHtml(item.title)
                 + (item.year ? ' <span class="jw-year">' + escapeHtml(item.year) + '</span>' : '') + '</h3>' + (canRequest ? '<span class="jw-seerr-status" role="status">Checking Seerr…</span>' : '') + '</div></div>'
                 + '<div class="jw-actions">'
                 + (canRequest ? '<button type="button" class="jw-source jw-seerr jw-direct-request" disabled data-seerr-id="' + Number(item.tmdbid) + '" data-seerr-type="' + type + '">' + (type === 'tv' ? 'Choose seasons' : 'Request') + '</button>' : '')
                 + (seerrHref ? '<a class="jw-source jw-seerr" target="_blank" rel="noopener noreferrer" href="' + seerrHref + '">' + (canRequest ? 'Open in Seerr' : 'Request in Seerr') + ' <span aria-hidden="true">↗</span></a>' : '')
-                + (href ? '<a class="jw-source" target="_blank" rel="noopener noreferrer" href="' + href + '">JustWatch <span aria-hidden="true">↗</span></a>' : '')
                 + '</div></header><div class="jw-request-panel" role="status" aria-live="polite"></div>' + offers + '<p class="jw-empty jw-filter-empty" hidden>No offers from your selected providers for this title. Choose All providers to see other options, or request it through Seerr.</p><p class="jw-note">Availability and prices can change. Confirm details with the provider.</p></article>';
         }).join('');
         applyProviderFilters(page);
@@ -387,6 +436,7 @@ define([], function () {
             page.dataset.justWatchBound = 'true';
             page.addEventListener('pagehide', function () { clearSearch(page); Dashboard.hideLoadingMsg(); });
             loadProviderFilters(page);
+            query(page, '.justWatchTestSeerr').addEventListener('click', function () { runSettingsCheck(page, this, 'JustWatch/Seerr/Test', 'GET', '.justWatchSeerrFeedback'); });
             query(page, '.justWatchProviderFilters').addEventListener('click', function (event) { handleProviderFilter(page, event); });
             query(page, '.justWatchSettingsForm').addEventListener('submit', function (event) {
                 event.preventDefault();
@@ -395,7 +445,7 @@ define([], function () {
             query(page, '.justWatchResults').addEventListener('error', function (event) {
                 if (event.target.classList.contains('jw-poster')) event.target.hidden = true;
             }, true);
-            query(page, '.justWatchResults').addEventListener('click', function (event) { handleSeerrClick(page, event); });
+            query(page, '.justWatchResults').addEventListener('click', function (event) { selectCountry(page, event); handleSeerrClick(page, event); });
             query(page, '.justWatchClearButton').addEventListener('click', function () {
                 clearSearch(page);
                 Dashboard.hideLoadingMsg();

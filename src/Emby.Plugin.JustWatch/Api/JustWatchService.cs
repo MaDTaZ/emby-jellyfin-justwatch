@@ -10,7 +10,7 @@ using MediaBrowser.Controller.Net;
 namespace Emby.Plugin.JustWatch.Api
 {
     [Route("/JustWatch/Search", "GET", Summary = "Search JustWatch by title.")]
-    public sealed class SearchJustWatch : IReturn<IReadOnlyList<JustWatchSearchResult>>
+    public sealed class SearchJustWatch : IReturn<JustWatchSearchResponse>
     {
         public string Title { get; set; } = string.Empty;
 
@@ -22,6 +22,10 @@ namespace Emby.Plugin.JustWatch.Api
 
         public string? Country { get; set; }
     }
+
+    [Authenticated(Roles = "Admin")]
+    [Route("/JustWatch/Seerr/Test", "GET")]
+    public sealed class TestSeerrConnection : IReturn<SeerrResult> { }
 
     [Authenticated(Roles = "Admin")]
     [Route("/JustWatch/Seerr/Details", "GET")]
@@ -59,14 +63,21 @@ namespace Emby.Plugin.JustWatch.Api
 
         private static bool IsSeerrFailure(Exception ex) => ex is ArgumentException || ex is InvalidOperationException || ex is HttpRequestException || ex is TaskCanceledException || ex is System.Text.Json.JsonException;
 
-        public Task<IReadOnlyList<JustWatchSearchResult>> Get(SearchJustWatch request)
+        public async Task<SeerrResult> Get(TestSeerrConnection request)
+        {
+            try { return await new SeerrClient(SeerrHttp, Plugin.Instance!.Configuration.Options).TestConnectionAsync(CancellationToken.None); }
+            catch (Exception ex) when (IsSeerrFailure(ex)) { return new SeerrResult { Message = "Could not connect to Seerr. Check the saved URL and API key." }; }
+        }
+
+        public async Task<JustWatchSearchResponse> Get(SearchJustWatch request)
         {
             var options = Plugin.Instance?.Configuration.Options ?? new JustWatchOptions();
             var client = new JustWatchClient(Http, options);
 
-            return request.Anywhere ? client.SearchAcrossCountriesAsync(request.Title, request.Year, request.MediaType, CancellationToken.None)
-                : !string.IsNullOrWhiteSpace(request.Country) ? client.SearchCountryAsync(request.Country!, request.Title, request.Year, request.MediaType, CancellationToken.None)
-                : client.SearchAsync(request.Title, request.Year, request.MediaType, CancellationToken.None);
+            if (request.Anywhere) return await client.SearchAcrossCountriesDetailedAsync(request.Title, request.Year, request.MediaType, CancellationToken.None);
+            var results = !string.IsNullOrWhiteSpace(request.Country) ? await client.SearchCountryAsync(request.Country!, request.Title, request.Year, request.MediaType, CancellationToken.None)
+                : await client.SearchAsync(request.Title, request.Year, request.MediaType, CancellationToken.None);
+            return new JustWatchSearchResponse { Results = results, SearchedCountries = new[] { request.Country ?? options.Country } };
         }
     }
 }

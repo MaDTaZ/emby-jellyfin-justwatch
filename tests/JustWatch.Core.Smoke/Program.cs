@@ -6,9 +6,10 @@ using JustWatch.Plugin.Core;
 var handler = new StubHandler();
 using var http = new HttpClient(handler);
 var client = new JustWatchClient(http, new JustWatchOptions { Country = "ca", Language = "en", SeerrUrl = "https://seerr.example.com/login" });
-handler.Body = """
+var successBody = """
 {"data":{"popularTitles":{"edges":[{"node":{"id":"tm205861","objectType":"MOVIE","content":{"title":"Arrival","originalReleaseYear":2016,"fullPath":"/ca/movie/arrival-2016","externalIds":{"tmdbId":"329865"}},"offers":[{"monetizationType":"RENT","presentationType":"HD","retailPrice":"CA$ 4.99","currency":"CAD","standardWebURL":"https://example.com/watch","package":{"packageId":2,"clearName":"Example"}},{"monetizationType":"BUY","standardWebURL":"javascript:alert(1)","package":{"packageId":3,"clearName":"Another"}}]}}]}}}
 """;
+handler.Body = successBody;
 var results = await client.SearchAsync("Arrival", 2016, "movie", default);
 Check(results.Count == 1 && results[0].Country == "CA", "title and normalized country");
 Check(results[0].JustWatchUrl == "https://www.justwatch.com/ca/movie/arrival-2016", "title link");
@@ -48,6 +49,21 @@ handler.Body = "{\"errors\":[{\"message\":\"failed\"}]}";
 await ExpectFailure(() => client.SearchAsync("Arrival", null, null, default));
 handler.Body = "{}";
 await ExpectFailure(() => client.SearchAsync("Arrival", null, null, default));
+var pluginId = Guid.NewGuid();
+Check(LegacyPluginPolicy.CanArchive(pluginId,pluginId,new Version(0,1,6,0),new Version(0,1,13,0),"JustWatch","Superseded",false),"retired matching plugin eligible");
+foreach(var value in new[]{
+    LegacyPluginPolicy.CanArchive(Guid.NewGuid(),pluginId,new Version(0,1,6,0),new Version(0,1,13,0),"JustWatch","Superseded",false),
+    LegacyPluginPolicy.CanArchive(pluginId,pluginId,new Version(0,1,13,0),new Version(0,1,13,0),"JustWatch","Superseded",false),
+    LegacyPluginPolicy.CanArchive(pluginId,pluginId,new Version(0,1,6,0),new Version(0,1,13,0),"JustWatch","Active",false),
+    LegacyPluginPolicy.CanArchive(pluginId,pluginId,new Version(0,1,6,0),new Version(0,1,13,0),"JustWatch","Superseded",true)})
+    Check(!value,"cleanup protects other plugins, current version, active status and loaded copies");
+handler.Body = successBody;
+handler.FailCountries = new[]{"US"};
+var partial = await anywhereClient.SearchAcrossCountriesDetailedAsync("Arrival",2016,"movie",default);
+Check(partial.Results.Count==2 && partial.FailedCountries.SequenceEqual(new[]{"US"}) && partial.SearchedCountries.SequenceEqual(new[]{"CA","GB"}),"successful countries retained with exact failed-country warning");
+handler.FailCountries = new[]{"CA","US","GB"};
+await ExpectFailure(()=>anywhereClient.SearchAcrossCountriesAsync("Arrival",2016,"movie",default));
+handler.FailCountries = Array.Empty<string>();
 await SeerrSmoke.Run();
 if (args.Contains("--live"))
 {
@@ -68,13 +84,17 @@ static async Task ExpectFailure(Func<Task<IReadOnlyList<JustWatchSearchResult>>>
 sealed class StubHandler : HttpMessageHandler
 {
     public string Body = "{}";
+    public string[] FailCountries = Array.Empty<string>();
     public string? Request;
     public System.Collections.Concurrent.ConcurrentBag<string> Countries = new();
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
     {
-        Request = await request.Content!.ReadAsStringAsync(token);
-        using var document = JsonDocument.Parse(Request);
-        Countries.Add(document.RootElement.GetProperty("variables").GetProperty("country").GetString()!);
+        var requestBody = await request.Content!.ReadAsStringAsync(token);
+        Request = requestBody;
+        using var document = JsonDocument.Parse(requestBody);
+        var country = document.RootElement.GetProperty("variables").GetProperty("country").GetString()!;
+        Countries.Add(country);
+        if(FailCountries.Contains(country)) return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
         return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Body, Encoding.UTF8, "application/json") };
     }
 }

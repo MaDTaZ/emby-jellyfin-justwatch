@@ -173,3 +173,17 @@ The catalog image uses a landscape mascot banner with the full character inside 
 ## Per-search region dropdown (0.1.12)
 
 Search region defaults to All chosen countries and lists each configured Anywhere country separately with a readable name where available. Pick a single country without opening Settings or changing the saved default country. All chosen countries searches only the configured list. Jellyfin 12 uses 0.1.12.0; Jellyfin 10.10.7 uses 0.1.11.1.
+
+## Country cards, connection test, and cleanup (0.1.13)
+
+Matching results share one title card with country buttons. They merge only by the exact TMDB ID and media type, or a stable JustWatch ID when TMDB is missing. Unknown matches remain separate. Each country keeps its own offers, prices, currencies, and JustWatch link. Switching countries preserves Seerr request and season controls and sends no new requests.
+
+Anywhere search retains successful countries when others time out or fail and clearly lists unavailable countries. All-country failures still produce an error. At most two countries are fetched concurrently. The search API now returns Results, FailedCountries, and SearchedCountries; dashboard rendering also accepts previous array responses.
+
+Save settings, then choose Test Seerr connection. The server reads the authenticated Seerr account using the saved key. It does not submit requests or bypass approval rules. Both connection-test endpoints require administrator privileges.
+
+Jellyfin Settings includes an explicit Clean up old entries action. Check the confirmation first. Only older copies with the same plugin GUID, a known legacy/current name, no loaded instance, and Disabled or Superseded status qualify. The current/newer, active, and unrelated plugins are excluded. Each eligible folder is ZIP-backed-up to where-to-watch-backups beside the plugins folder before Jellyfin removes its entry. Reparse-point plugin folders are skipped. Shared saved configuration is untouched. Refresh Plugins afterward; Jellyfin may require a restart. Emby does not have this Jellyfin-specific cleanup action.
+
+Validation includes dashboard checks for single-card grouping, distinct identities, country switching, partial warnings, connection tests, and explicit cleanup selection; shared-client checks cover partial/all-country failures, authenticated connection behavior, and cleanup exclusions. No changes or requests were made on the user's real server. Jellyfin 12 uses 0.1.13.0; Jellyfin 10.10.7 uses 0.1.12.1.
+
+Cleanup filesystem verification uses temporary plugin folders and a simulated plugin manager; it checks backup-before-removal, refusal to remove when backup creation fails, preservation of current/unrelated copies and configuration, repeatability, and administrator policies. Run: `dotnet run --project tests/Jellyfin.Maintenance.Smoke -p:JellyfinSdkVersion=12.0.0-rc7 -p:JellyfinTargetFramework=net10.0`.
