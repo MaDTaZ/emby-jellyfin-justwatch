@@ -7,7 +7,8 @@
     <AssemblyName>Emby.Plugin.JustWatch</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\JustWatch.Plugin.Core\JustWatch.Plugin.Core.csproj" />
+    <Compile Include="..\JustWatch.Plugin.Core\*.cs" Link="Core\%(Filename)%(Extension)" />
+    <PackageReference Include="System.Text.Json" Version="5.0.2" />
     <PackageReference Include="MediaBrowser.Server.Core" Version="$(EmbySdkVersion)" Condition="'$(EmbyReferenceDirectory)' == ''" />
     <PackageReference Include="MediaBrowser.Common" Version="$(EmbySdkVersion)" Condition="'$(EmbyReferenceDirectory)' == ''" />
   </ItemGroup>

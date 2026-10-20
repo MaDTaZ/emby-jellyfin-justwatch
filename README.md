@@ -18,7 +18,7 @@ Refresh the plugin catalog, install **Where to Watch**, then restart Jellyfin. T
 
 ### Emby stable and beta
 
-Download **JustWatch-Emby-Stable-4.8.10.zip** or **JustWatch-Emby-Beta-4.11.0.8.zip** from the release. Stop Emby, extract both DLLs directly into its plugins directory, replace older JustWatch copies, then restart. Install only one Emby variant.
+Download **JustWatch-Emby-Stable-4.8.10.zip** or **JustWatch-Emby-Beta-4.11.0.8.zip** from the release. Stop Emby, extract the single `Emby.Plugin.JustWatch.dll` directly into its plugins directory, replace the older plugin DLL, then restart. Move an older `JustWatch.Plugin.Core.dll` outside the plugins folder; current Emby packages no longer need it. Install only one Emby variant.
 
 Emby catalog installation requires [Emby's developer onboarding and catalog publication](https://dev.emby.media/doc/plugins/dev/Getting-your-plug-in-in-the-catalog.html). This GitHub repository URL cannot be added to Emby as a custom catalog. The plugin has not been submitted to Emby's catalog.
 
@@ -63,7 +63,7 @@ Save country and language settings before searching. Lookup uses the saved serve
 
 ## Install a build
 
-Build in Release mode. For Jellyfin, create a JustWatch folder inside the server plugin directory and copy the Jellyfin plugin DLL plus `JustWatch.Plugin.Core.dll` from its build output. For Emby, copy both DLLs directly into the plugins directory. Do not copy Jellyfin/Emby host assemblies. Restart the server, open the Where to Watch dashboard page, save your region, and search. Keep separate installation folders for the two server builds. Runtime installation and dashboard loading still need verification on a real server.
+Build in Release mode. For Jellyfin, create a JustWatch folder inside the server plugin directory and copy the Jellyfin plugin DLL plus `JustWatch.Plugin.Core.dll` from its build output. For Emby, copy only `Emby.Plugin.JustWatch.dll` directly into the plugins directory; the shared code is compiled into it. Do not copy Jellyfin/Emby host assemblies. Restart the server, open the Where to Watch dashboard page, save your region, and search. Keep separate installation folders for the two server builds. Runtime installation and dashboard loading still need verification on a real server.
 
 ## Verification
 
@@ -81,15 +81,15 @@ JustWatch does not offer a stable public server-plugin API. The shared client us
 ## Emby stable and beta packages
 
 - `dist/JustWatch-Emby-Stable-4.8.10.zip`: existing stable build against SDK 4.8.10.
-- `dist/JustWatch-Emby-Beta-4.11.0.8.zip`: built against MediaBrowser.Common and MediaBrowser.Model from the official Emby 4.11.0.8 release archive. Compiles with zero warnings; live server loading is not yet tested.
+- `dist/JustWatch-Emby-Beta-4.11.0.8.zip`: built against MediaBrowser.Common and MediaBrowser.Model from the official Emby 4.11.0.8 release archive. The single-DLL 0.1.14 build was startup-tested with the official portable Emby 4.11.0.8 on macOS arm64; the reported Linux failure was reproduced with the old package first.
 
-For Emby, stop the server and place both DLLs directly in its plugins directory, replacing older copies. Install only one Emby variant at a time. These packages contain only the plugin and shared lookup library, not server assemblies.
+For Emby, stop the server and place the single plugin DLL directly in its plugins directory, replacing the older plugin DLL. Move any old `JustWatch.Plugin.Core.dll` outside plugins. Install only one Emby variant at a time. Emby ZIPs contain only `Emby.Plugin.JustWatch.dll`; Jellyfin ZIPs still contain their plugin DLL plus `JustWatch.Plugin.Core.dll`. Do not copy host/runtime assemblies.
 
 The default build keeps SDK 4.8.10. To build against a different published SDK, pass `-p:EmbySdkVersion=VERSION`. For an exact server build, extract `MediaBrowser.Common.dll` and `MediaBrowser.Model.dll` from that official release into a local directory, then pass `-p:EmbyReferenceDirectory=/absolute/path/to/references`. Exact-release builds also reference System.Memory 4.6.3 to match the 4.11 assemblies.
 
 ## Release packaging
 
-Current Emby and Jellyfin 12 assemblies use version 0.1.7.0; Jellyfin 10.10.7 uses 0.1.6.1 so newer servers select the .NET 10 build. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
+Current Emby and Jellyfin 12 assemblies use version 0.1.14.0; Jellyfin 10.10.7 uses 0.1.13.1 so newer servers select the .NET 10 build. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
 
 ```bash
 python3 scripts/package-release.py
@@ -187,3 +187,11 @@ Jellyfin Settings includes an explicit Clean up old entries action. Check the co
 Validation includes dashboard checks for single-card grouping, distinct identities, country switching, partial warnings, connection tests, and explicit cleanup selection; shared-client checks cover partial/all-country failures, authenticated connection behavior, and cleanup exclusions. No changes or requests were made on the user's real server. Jellyfin 12 uses 0.1.13.0; Jellyfin 10.10.7 uses 0.1.12.1.
 
 Cleanup filesystem verification uses temporary plugin folders and a simulated plugin manager; it checks backup-before-removal, refusal to remove when backup creation fails, preservation of current/unrelated copies and configuration, repeatability, and administrator policies. Run: `dotnet run --project tests/Jellyfin.Maintenance.Smoke -p:JellyfinSdkVersion=12.0.0-rc7 -p:JellyfinTargetFramework=net10.0`.
+
+## Emby startup dependency fix (0.1.14)
+
+The old two-DLL package could stop Emby during startup with FileNotFoundException for JustWatch.Plugin.Core even when both DLLs were present. This was reproduced with the official portable Emby 4.11.0.8. The Emby project now compiles the shared source into Emby.Plugin.JustWatch.dll, eliminating that external assembly dependency. Emby stable and beta ZIPs contain exactly one DLL. Jellyfin retains its separate shared library and has no functionality change.
+
+For Linux upgrades, stop Emby, move the old two DLLs outside plugins, then extract the matching new Emby ZIP directly into /var/lib/emby/plugins. Set owner/group to the service account, permissions 644, then start Emby. Keep the plugin configuration files.
+
+Verification: the old package reproduced the missing-Core startup failure; the fixed single DLL loaded as version 0.1.14.0 and reached Core startup complete on an isolated macOS arm64 Emby 4.11.0.8 instance (.NET 6.0.36). Its readiness endpoint returned server version 4.11.0.8; anonymous search and Seerr test calls returned 401. The user's Linux host uses .NET 8 and still needs confirmation after installing this fix. Package smoke checks inspect both Emby archives for exactly one DLL, no external Core assembly reference, compiled-in shared types, and embedded dashboard resources. Run `dotnet run --project tests/Emby.Package.Smoke` after packaging.

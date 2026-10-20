@@ -9,19 +9,19 @@
     "category": "General",
     "versions": [
       {
-        "version": "0.1.13.0",
-        "changelog": "Combine matching titles into country-tabbed cards, retain successful countries with failure warnings, test saved Seerr credentials, and safely back up and clean inactive older Jellyfin entries.",
+        "version": "0.1.14.0",
+        "changelog": "Fix Emby startup by compiling the shared lookup code into one plugin DLL. Jellyfin functionality is unchanged.",
         "targetAbi": "12.0.0.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.13/JustWatch-Jellyfin-12.0-rc7.zip",
-        "checksum": "78e5f950f7b3b39a235b6c22d0a0c3bc",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.14/JustWatch-Jellyfin-12.0-rc7.zip",
+        "checksum": "dac99ae4a0b763df36e600942dc25247",
         "timestamp": "2026-10-20T00:00:00Z"
       },
       {
-        "version": "0.1.12.1",
-        "changelog": "Combine matching titles into country-tabbed cards, retain successful countries with failure warnings, test saved Seerr credentials, and safely back up and clean inactive older Jellyfin entries.",
+        "version": "0.1.13.1",
+        "changelog": "Fix Emby startup by compiling the shared lookup code into one plugin DLL. Jellyfin functionality is unchanged.",
         "targetAbi": "10.10.7.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.13/JustWatch-Jellyfin-10.10.7.zip",
-        "checksum": "0399bb6183ca6cda9f508dee22d0a2c4",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.14/JustWatch-Jellyfin-10.10.7.zip",
+        "checksum": "921eed451838ab9e0944385ae1a5e5b4",
         "timestamp": "2026-10-20T00:00:00Z"
       }
     ]

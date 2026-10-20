@@ -7,8 +7,8 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / 'dist'
 DIST.mkdir(exist_ok=True)
-VERSION = '0.1.13.0'
-TAG = 'v0.1.13'
+VERSION = '0.1.14.0'
+TAG = 'v0.1.14'
 REPO = 'https://github.com/MaDTaZ/emby-jellyfin-justwatch'
 builds = {
     'JustWatch-Emby-Stable-4.8.10.zip': ('artifacts/emby-stable', 'Emby.Plugin.JustWatch.dll'),
@@ -18,7 +18,7 @@ builds = {
 }
 for name, (folder, plugin) in builds.items():
     with zipfile.ZipFile(DIST / name, 'w', zipfile.ZIP_DEFLATED) as archive:
-        for dll in [plugin, 'JustWatch.Plugin.Core.dll']:
+        for dll in ([plugin] if 'Emby' in name else [plugin, 'JustWatch.Plugin.Core.dll']):
             entry = zipfile.ZipInfo(dll, (2026, 10, 19, 0, 0, 0))
             entry.compress_type = zipfile.ZIP_DEFLATED
             archive.writestr(entry, (ROOT / folder / dll).read_bytes())
@@ -37,15 +37,15 @@ manifest = [{
     'versions': [
         {
             'version': version,
-            'changelog': 'Combine matching titles into country-tabbed cards, retain successful countries with failure warnings, test saved Seerr credentials, and safely back up and clean inactive older Jellyfin entries.',
+            'changelog': 'Fix Emby startup by compiling the shared lookup code into one plugin DLL. Jellyfin functionality is unchanged.',
             'targetAbi': abi,
             'sourceUrl': f'{REPO}/releases/download/{TAG}/{name}',
             'checksum': hashlib.md5((DIST / name).read_bytes()).hexdigest(),
             'timestamp': '2026-10-20T00:00:00Z',
         }
         for version, abi, name in [
-            ('0.1.13.0', '12.0.0.0', 'JustWatch-Jellyfin-12.0-rc7.zip'),
-            ('0.1.12.1', '10.10.7.0', jellyfin),
+            ('0.1.14.0', '12.0.0.0', 'JustWatch-Jellyfin-12.0-rc7.zip'),
+            ('0.1.13.1', '10.10.7.0', jellyfin),
         ]
     ],
 }]
