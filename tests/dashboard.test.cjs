@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-async function render(host, results, fail = false, details = {State: "notRequested", CanRequest: true, Seasons: [{Number:1,Name:"Season 1"},{Number:2,Name:"Season 2"}]}) {
+async function render(host, results, fail = false, details = {State: "notRequested", CanRequest: true, Seasons: [{Number:1,Name:"Season 1"},{Number:2,Name:"Season 2"}]}, configLoader = async () => ({Options:{}})) {
     const rows = Array.isArray(results) ? results : results.Results || results.results || [];
     const cards = rows.filter(r => r.CanRequestInSeerr || r.canRequestInSeerr).map(r => {
         const badge = {textContent: "", dataset: {}};
@@ -42,7 +42,7 @@ async function render(host, results, fail = false, details = {State: "notRequest
         URL, document: { querySelector: () => page }, define: (_dependencies, factory) => factory()(page),
         Dashboard: { showLoadingMsg() {}, hideLoadingMsg() {}, alert() {}, processPluginConfigurationUpdateResult(result) { calls.confirmations.push(result); } },
         ApiClient: {
-            getPluginConfiguration: async () => ({ Options: {} }),
+            getPluginConfiguration: configLoader,
             updatePluginConfiguration: async (_id, config) => { calls.updates.push(config); return { status: 204 }; },
             getUrl: (_path, parameters) => { calls.searches.push(parameters); return '/' + _path; },
             ajax: (options) => {
@@ -63,6 +63,31 @@ async function render(host, results, fail = false, details = {State: "notRequest
     return { result: elements.get('.justWatchResults'), button: elements.get('.justWatchSearchButton'), elements, events, calls, page, cards };
 }
 for (const host of ['Emby', 'Jellyfin']) {
+    test(`${host}: returning to the page retains unsaved settings without fetching old values again`, async () => {
+        let loads=0;
+        const {elements,events,page}=await render(host,[],false,undefined,async()=>{loads++;return {Options:{SeerrUrl:'https://saved.example.com'}};});
+        elements.get('.justWatchSeerrUrl').value='https://draft.example.com';
+        elements.get('.justWatchSeerrApiKey').value='unsaved-key';
+        events['.justWatchSettingsForminput']({target:{matches:selector=>selector==='.justWatchSeerrUrl'}});
+        events.pagehide();events.pageshow.call(page);
+        await new Promise(resolve=>setImmediate(resolve));
+        assert.equal(elements.get('.justWatchSeerrUrl').value,'https://draft.example.com');
+        assert.equal(elements.get('.justWatchSeerrApiKey').value,'unsaved-key');
+        assert.equal(loads,1);
+    });
+    test(`${host}: delayed initial config cannot overwrite fields edited while it loads`, async () => {
+        let finish;
+        const pending=new Promise(resolve=>{finish=resolve;});
+        const {elements,events,page}=await render(host,[],false,undefined,()=>pending);
+        page.querySelector('.justWatchSeerrUrl').value='https://draft.example.com';
+        events['.justWatchSettingsForminput']({target:{matches:selector=>selector==='.justWatchSeerrUrl'}});
+        events.pageshow.call(page);
+        finish({Options:{SeerrUrl:'https://saved.example.com',SeerrApiKey:'saved-key',Country:'CA'}});
+        await new Promise(resolve=>setImmediate(resolve));
+        assert.equal(elements.get('.justWatchSeerrUrl').value,'https://draft.example.com');
+        assert.equal(elements.get('.justWatchSeerrApiKey').value,'saved-key');
+        assert.equal(elements.get('.justWatchCountry').value,'CA');
+    });
     test(`${host}: country switching preserves request controls and makes no network calls`, async () => {
         const {events,calls}=await render(host,[]);
         const panels=[{dataset:{countryPanel:'CA'},hidden:false},{dataset:{countryPanel:'US'},hidden:true}];

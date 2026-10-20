@@ -89,7 +89,7 @@ The default build keeps SDK 4.8.10. To build against a different published SDK, 
 
 ## Release packaging
 
-Current Emby and Jellyfin 12 assemblies use version 0.1.14.0; Jellyfin 10.10.7 uses 0.1.13.1 so newer servers select the .NET 10 build. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
+Current Emby and Jellyfin 12 assemblies use version 0.1.16.0; Jellyfin 10.10.7 uses 0.1.15.1 so newer servers select the .NET 10 build. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
 
 ```bash
 python3 scripts/package-release.py
@@ -201,3 +201,9 @@ Verification: the old package reproduced the missing-Core startup failure; the f
 Emby now implements IHasThumbImage and serves the approved titled mascot from an embedded PNG resource. This makes the installed-plugin image available without relying on a Jellyfin manifest or a separately copied image. The Emby package remains a single DLL. Jellyfin functionality is unchanged.
 
 The thumbnail-enabled beta DLL was startup-tested on the isolated official Emby 4.11.0.8 instance. It reached Core startup complete, and GET /emby/Plugins/4df372d4-8179-4f05-9312-419434bd835d/Thumb returned HTTP 200 with image/png and a valid PNG signature.
+
+## Preserve settings drafts on page return (0.1.16)
+
+Settings load once per live page rather than on every pageshow event, so returning from another tab cannot replace unsaved edits with old saved values. Fields edited during a delayed initial load are preserved while untouched fields receive saved defaults. Failed loads can retry. Draft URL/key values stay in page memory; they are not written to local/session storage or saved automatically. Save remains required for persistence. Search fields/results still clear on navigation as requested.
+
+Validation: 43 dashboard checks include reentry without re-fetching settings and protection of edits during delayed initial loads for both hosts. Emby remains a single-DLL package with the embedded mascot.

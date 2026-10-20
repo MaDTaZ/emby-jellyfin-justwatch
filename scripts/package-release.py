@@ -7,8 +7,8 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / 'dist'
 DIST.mkdir(exist_ok=True)
-VERSION = '0.1.15.0'
-TAG = 'v0.1.15'
+VERSION = '0.1.16.0'
+TAG = 'v0.1.16'
 REPO = 'https://github.com/MaDTaZ/emby-jellyfin-justwatch'
 builds = {
     'JustWatch-Emby-Stable-4.8.10.zip': ('artifacts/emby-stable', 'Emby.Plugin.JustWatch.dll'),
@@ -37,15 +37,15 @@ manifest = [{
     'versions': [
         {
             'version': version,
-            'changelog': 'Embed the approved Where to Watch titled mascot as the Emby plugin thumbnail. Emby remains a single DLL; Jellyfin functionality is unchanged.',
+            'changelog': 'Preserve unsaved settings when the open page is shown again, and prevent delayed configuration loads from overwriting fields being edited. Settings still require Save to persist.',
             'targetAbi': abi,
             'sourceUrl': f'{REPO}/releases/download/{TAG}/{name}',
             'checksum': hashlib.md5((DIST / name).read_bytes()).hexdigest(),
             'timestamp': '2026-10-20T00:00:00Z',
         }
         for version, abi, name in [
-            ('0.1.15.0', '12.0.0.0', 'JustWatch-Jellyfin-12.0-rc7.zip'),
-            ('0.1.14.1', '10.10.7.0', jellyfin),
+            ('0.1.16.0', '12.0.0.0', 'JustWatch-Jellyfin-12.0-rc7.zip'),
+            ('0.1.15.1', '10.10.7.0', jellyfin),
         ]
     ],
 }]

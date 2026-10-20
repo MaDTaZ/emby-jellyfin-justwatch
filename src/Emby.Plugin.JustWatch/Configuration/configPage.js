@@ -28,19 +28,30 @@ define([], function () {
         select.value = codes.indexOf(previous) >= 0 ? previous : 'anywhere';
     }
 
+    const settingFields = ['.justWatchCountry', '.justWatchAnywhereCountries', '.justWatchLanguage', '.justWatchResultLimit', '.justWatchSeerrUrl', '.justWatchSeerrApiKey'];
+
     function loadConfig(page) {
+        if (page.settingsLoaded || page.settingsLoading) return;
+        page.settingsLoading = true;
+        page.settingsEdited = page.settingsEdited || new Set();
+        function setField(selector, value) {
+            if (!page.settingsEdited.has(selector)) query(page, selector).value = value;
+        }
         Dashboard.showLoadingMsg();
         ApiClient.getPluginConfiguration(pluginId).then(function (config) {
             config.Options = config.Options || {};
-            query(page, '.justWatchCountry').value = config.Options.Country || 'US';
-            query(page, '.justWatchAnywhereCountries').value = config.Options.AnywhereCountries || 'CA,US,GB,AU';
-            populateSearchRegions(page, config.Options.AnywhereCountries, true);
-            query(page, '.justWatchSeerrApiKey').value = config.Options.SeerrApiKey || '';
-            query(page, '.justWatchSeerrUrl').value = config.Options.SeerrUrl || '';
-            query(page, '.justWatchLanguage').value = config.Options.Language || 'en';
-            query(page, '.justWatchResultLimit').value = config.Options.ResultLimit || 8;
+            setField('.justWatchCountry', config.Options.Country || 'US');
+            setField('.justWatchAnywhereCountries', config.Options.AnywhereCountries || 'CA,US,GB,AU');
+            populateSearchRegions(page, query(page, '.justWatchAnywhereCountries').value, true);
+            setField('.justWatchSeerrApiKey', config.Options.SeerrApiKey || '');
+            setField('.justWatchSeerrUrl', config.Options.SeerrUrl || '');
+            setField('.justWatchLanguage', config.Options.Language || 'en');
+            setField('.justWatchResultLimit', config.Options.ResultLimit || 8);
+            page.settingsLoading = false;
+            page.settingsLoaded = true;
             Dashboard.hideLoadingMsg();
         }).catch(function () {
+            page.settingsLoading = false;
             Dashboard.hideLoadingMsg();
             Dashboard.alert('Could not load Where to Watch settings.');
         });
@@ -434,6 +445,13 @@ define([], function () {
             }
 
             page.dataset.justWatchBound = 'true';
+            function rememberSettingsEdit(event) {
+                settingFields.forEach(function (selector) {
+                    if (event.target.matches(selector)) page.settingsEdited.add(selector);
+                });
+            }
+            query(page, '.justWatchSettingsForm').addEventListener('input', rememberSettingsEdit);
+            query(page, '.justWatchSettingsForm').addEventListener('change', rememberSettingsEdit);
             page.addEventListener('pagehide', function () { clearSearch(page); Dashboard.hideLoadingMsg(); });
             loadProviderFilters(page);
             query(page, '.justWatchTestSeerr').addEventListener('click', function () { runSettingsCheck(page, this, 'JustWatch/Seerr/Test', 'GET', '.justWatchSeerrFeedback'); });
