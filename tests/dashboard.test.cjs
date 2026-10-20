@@ -19,7 +19,7 @@ async function render(host, results, fail = false, details = {State: "notRequest
             if (!elements.has(selector)) elements.set(selector, {
                 value: selector === '.justWatchTitle' ? 'Arrival' : '',
                 innerHTML: '', textContent: '', disabled: false,
-                querySelectorAll: () => cards.map(c => c.button),
+                querySelectorAll: selector => selector === '.jw-direct-request' ? cards.map(c => c.button) : [],
                 addEventListener(type, handler) { events[selector + type] = handler; }
             });
             return elements.get(selector);
@@ -60,6 +60,37 @@ async function render(host, results, fail = false, details = {State: "notRequest
     return { result: elements.get('.justWatchResults'), button: elements.get('.justWatchSearchButton'), elements, events, calls, page, cards };
 }
 for (const host of ['Emby', 'Jellyfin']) {
+    test(`${host}: provider filters hide unrelated offers, preserve title actions, and reset`, async () => {
+        const { elements, events, calls, page } = await render(host, [{Title:'Arrival', Offers:[
+            {ProviderId:1, ProviderName:'Netflix', MonetizationType:'FLATRATE'},
+            {ProviderId:2, ProviderName:'Apple <TV>', MonetizationType:'RENT'}
+        ]}]);
+        const toolbar = elements.get('.justWatchProviderFilters');
+        assert.match(toolbar.innerHTML, /Apple &lt;TV&gt;/);
+        const providers = [1,2].map(id => ({dataset:{providerKey:String(id)},hidden:false}));
+        const count = {};
+        const section = {querySelectorAll:()=>providers,querySelector:()=>count};
+        const empty = {hidden:true};
+        const card = {querySelectorAll:()=>[section],querySelector:()=>empty};
+        elements.get('.justWatchResults').querySelectorAll = () => [card];
+        const before = calls.ajax.length;
+        const click = dataset => events['.justWatchProviderFiltersclick']({target:{closest:()=>({dataset})}});
+        click({providerFilter:'1'});
+        assert.equal(providers[0].hidden,false);
+        assert.equal(providers[1].hidden,true);
+        assert.equal(count.textContent,'1 provider');
+        assert.equal(empty.hidden,true);
+        assert.match(toolbar.innerHTML, /data-provider-filter="1" aria-pressed="true"/);
+        page.selectedProviders = new Map([['3','Other service']]);
+        click({providerFilter:'4'});
+        assert.equal(section.hidden,true);
+        assert.equal(empty.hidden,false);
+        click({providerAll:'true'});
+        assert.equal(section.hidden,false);
+        assert.equal(providers[1].hidden,false);
+        assert.equal(empty.hidden,true);
+        assert.equal(calls.ajax.length,before,'filtering must not reload Seerr status or submit requests');
+    });
     test(`${host}: initializes defaults and saves normalized configuration`, async () => {
         const { elements, events, calls, page } = await render(host, []);
         assert.equal(elements.get('.justWatchCountry').value, 'US');

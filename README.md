@@ -153,3 +153,7 @@ The displayed plugin name and dashboard label are now **Where to Watch**. The ca
 ## Search-first layout (0.1.8)
 
 Search now appears first, with title, optional year, type, and Search arranged in a compact responsive row on desktop and stacked on smaller screens. Region, language, and Seerr settings are inside a keyboard-accessible Settings disclosure below results, collapsed by default. Existing settings are retained. Jellyfin 12 uses 0.1.8.0; Jellyfin 10.10.7 uses 0.1.7.1.
+
+## Provider filters (0.1.9)
+
+Search results show selectable provider chips. Select one or more services to narrow offers; All providers clears the filter. Choices are remembered in this browser when local storage is available. Saved selections remain selectable even when absent from the next search. Titles and Seerr actions remain visible when no offers match. Filtering updates offer visibility and provider counts without reloading results or resetting season/request controls. Jellyfin 12 uses 0.1.9.0; Jellyfin 10.10.7 uses 0.1.8.1.

@@ -74,6 +74,14 @@
 @media(max-width: 420px) {
 .justWatchConfigurationPage .jw-settings > summary span { display: block; margin: 6px 0 0; }
 }
+.justWatchConfigurationPage [hidden] { display: none !important; }
+.justWatchConfigurationPage .justWatchProviderFilters:not(:empty) { margin-top: 26px; padding: 18px; background: rgba(130,140,155,.06); border-radius: 12px; }
+.justWatchConfigurationPage .jw-filter-heading { font-weight: 600; margin-bottom: 14px; }
+.justWatchConfigurationPage .jw-filter-heading span { display: block; font-size: .85em; font-weight: 400; opacity: .65; margin-top: 5px; }
+.justWatchConfigurationPage .jw-filter-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.justWatchConfigurationPage .jw-filter { padding: 9px 13px; border: 1px solid rgba(140,150,165,.3); border-radius: 20px; color: inherit; background: transparent; font: inherit; font-size: .85em; cursor: pointer; }
+.justWatchConfigurationPage .jw-filter[aria-pressed="true"] { border-color: #00a4dc; background: rgba(0,164,220,.18); }
+.justWatchConfigurationPage .jw-filter:focus-visible { outline: 2px solid #00a4dc; outline-offset: 3px; }
 </style>
 
   <div data-role="content">
@@ -103,6 +111,7 @@
           <span>Search</span>
         </button>
         </div>
+        <div class="justWatchProviderFilters" aria-label="Provider filters"></div>
         <div class="justWatchResults" role="status" aria-live="polite" style="margin-top:1.5em;"></div>
       </div>
       <details class="jw-settings">

@@ -112,7 +112,72 @@ define([], function () {
         for (let i = 0; i < Math.min(3, buttons.length); i++) worker();
     }
 
+    function providerKey(offer) {
+        return String(offer.providerid || offer.providername || 'Unknown provider');
+    }
+
+    function loadProviderFilters(page) {
+        try {
+            const saved = JSON.parse(localStorage.getItem('whereToWatch.providers') || '[]');
+            page.selectedProviders = new Map(Array.isArray(saved) ? saved.filter(function (entry) {
+                return Array.isArray(entry) && entry.length === 2 && typeof entry[0] === 'string' && typeof entry[1] === 'string';
+            }) : []);
+        } catch (_) { page.selectedProviders = new Map(); }
+    }
+
+    function renderProviderFilters(page, results) {
+        const providers = new Map(page.selectedProviders);
+        (results || []).forEach(function (raw) {
+            (normalize(raw).offers || []).forEach(function (rawOffer) {
+                const offer = normalize(rawOffer);
+                providers.set(providerKey(offer), String(offer.providername || 'Unknown provider'));
+            });
+        });
+        page.providerNames = providers;
+        const selected = page.selectedProviders;
+        query(page, '.justWatchProviderFilters').innerHTML = providers.size ? '<div class="jw-filter-heading">Filter providers <span>Choose services to show. Your choices are remembered in this browser.</span></div><div class="jw-filter-options">'
+            + '<button type="button" class="jw-filter" data-provider-all="true" aria-pressed="' + !selected.size + '">All providers</button>'
+            + Array.from(providers).sort(function (a, b) { return a[1].localeCompare(b[1]); }).map(function (entry) {
+                return '<button type="button" class="jw-filter" data-provider-filter="' + escapeHtml(entry[0]) + '" aria-pressed="' + selected.has(entry[0]) + '">' + escapeHtml(entry[1]) + '</button>';
+            }).join('') + '</div>' : '';
+    }
+
+    function applyProviderFilters(page) {
+        const selected = page.selectedProviders;
+        const container = query(page, '.justWatchResults');
+        container.querySelectorAll('.jw-result').forEach(function (card) {
+            let visible = 0;
+            card.querySelectorAll('.jw-section').forEach(function (section) {
+                let count = 0;
+                section.querySelectorAll('[data-provider-key]').forEach(function (provider) {
+                    provider.hidden = selected.size > 0 && !selected.has(provider.dataset.providerKey);
+                    if (!provider.hidden) count++;
+                });
+                section.hidden = count === 0;
+                section.querySelector('.jw-count').textContent = count + (count === 1 ? ' provider' : ' providers');
+                visible += count;
+            });
+            card.querySelector('.jw-filter-empty').hidden = !selected.size || visible > 0;
+        });
+    }
+
+    function handleProviderFilter(page, event) {
+        const button = event.target.closest('button[data-provider-filter], button[data-provider-all]');
+        if (!button) return;
+        if (button.dataset.providerAll) page.selectedProviders.clear();
+        else {
+            const key = button.dataset.providerFilter;
+            if (page.selectedProviders.has(key)) page.selectedProviders.delete(key);
+            else page.selectedProviders.set(key, page.providerNames.get(key) || key);
+        }
+        try { localStorage.setItem('whereToWatch.providers', JSON.stringify(Array.from(page.selectedProviders))); } catch (_) { }
+        renderProviderFilters(page, page.providerResults);
+        applyProviderFilters(page);
+    }
+
     function renderResults(page, results) {
+        page.providerResults = results || [];
+        renderProviderFilters(page, results);
         const container = query(page, '.justWatchResults');
         if (!results || !results.length) {
             container.innerHTML = '<p class="jw-empty">No matching titles found. Try another title or omit the year.</p>';
@@ -130,8 +195,8 @@ define([], function () {
                     : ({ FLATRATE: 'Subscription', RENT: 'Rent', BUY: 'Buy', FREE: 'Free', ADS: 'Free with ads' }[type] || 'Other offers');
                 if (!groups.has(label)) groups.set(label, new Map());
                 const providers = groups.get(label);
-                const key = String(offer.providerid || offer.providername || 'Unknown provider');
-                if (!providers.has(key)) providers.set(key, { name: offer.providername || 'Unknown provider', variants: new Map() });
+                const key = providerKey(offer);
+                if (!providers.has(key)) providers.set(key, { key: key, name: offer.providername || 'Unknown provider', variants: new Map() });
                 const provider = providers.get(key);
                 const href = safeUrl(offer.url);
                 // Merge qualities only when both price and destination match.
@@ -144,7 +209,7 @@ define([], function () {
                 return '<section class="jw-section"><div class="jw-section-heading"><h4>' + escapeHtml(label)
                     + '</h4><span class="jw-count">' + providers.length + (providers.length === 1 ? ' provider' : ' providers') + '</span></div>'
                     + '<div class="jw-provider-grid">' + providers.map(function (provider) {
-                        return '<article class="jw-provider"><div class="jw-provider-heading"><span class="jw-provider-mark" aria-hidden="true">'
+                        return '<article class="jw-provider" data-provider-key="' + escapeHtml(provider.key) + '"><div class="jw-provider-heading"><span class="jw-provider-mark" aria-hidden="true">'
                             + escapeHtml(provider.name.charAt(0).toUpperCase()) + '</span><h5>' + escapeHtml(provider.name) + '</h5></div>'
                             + '<div class="jw-variants">' + Array.from(provider.variants.values()).map(function (variant) {
                                 const qualities = Array.from(variant.qualities).sort(function (a, b) {
@@ -172,8 +237,9 @@ define([], function () {
                 + (canRequest ? '<button type="button" class="jw-source jw-seerr jw-direct-request" disabled data-seerr-id="' + Number(item.tmdbid) + '" data-seerr-type="' + type + '">' + (type === 'tv' ? 'Choose seasons' : 'Request') + '</button>' : '')
                 + (seerrHref ? '<a class="jw-source jw-seerr" target="_blank" rel="noopener noreferrer" href="' + seerrHref + '">' + (canRequest ? 'Open in Seerr' : 'Request in Seerr') + ' <span aria-hidden="true">↗</span></a>' : '')
                 + (href ? '<a class="jw-source" target="_blank" rel="noopener noreferrer" href="' + href + '">JustWatch <span aria-hidden="true">↗</span></a>' : '')
-                + '</div></header><div class="jw-request-panel" role="status" aria-live="polite"></div>' + offers + '<p class="jw-note">Availability and prices can change. Confirm details with the provider.</p></article>';
+                + '</div></header><div class="jw-request-panel" role="status" aria-live="polite"></div>' + offers + '<p class="jw-empty jw-filter-empty" hidden>No offers from your selected providers for this title. Choose All providers to see other options, or request it through Seerr.</p><p class="jw-note">Availability and prices can change. Confirm details with the provider.</p></article>';
         }).join('');
+        applyProviderFilters(page);
         refreshSeerrStatuses(page);
     }
 
@@ -256,6 +322,7 @@ define([], function () {
             mediaType: mediaType || null
         });
 
+        query(page, '.justWatchProviderFilters').innerHTML = '';
         query(page, '.justWatchSearchButton').disabled = true;
         query(page, '.justWatchResults').innerHTML = '<p>Checking availability…</p>';
         Dashboard.showLoadingMsg();
@@ -279,6 +346,8 @@ define([], function () {
             }
 
             page.dataset.justWatchBound = 'true';
+            loadProviderFilters(page);
+            query(page, '.justWatchProviderFilters').addEventListener('click', function (event) { handleProviderFilter(page, event); });
             query(page, '.justWatchSettingsForm').addEventListener('submit', function (event) {
                 event.preventDefault();
                 saveConfig(page);

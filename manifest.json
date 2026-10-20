@@ -9,19 +9,19 @@
     "category": "General",
     "versions": [
       {
-        "version": "0.1.8.0",
-        "changelog": "Put search first with a responsive compact layout, and move settings into a collapsed panel below results. Existing region and Seerr settings are retained.",
+        "version": "0.1.9.0",
+        "changelog": "Filter offers by provider with remembered browser preferences and an All providers reset. Seerr request controls remain available when selected services have no offers.",
         "targetAbi": "12.0.0.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.8/JustWatch-Jellyfin-12.0-rc7.zip",
-        "checksum": "a29cb47bbfa05068432222487d8285a5",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.9/JustWatch-Jellyfin-12.0-rc7.zip",
+        "checksum": "536f173a93a4d77c6bb82b3406952961",
         "timestamp": "2026-10-20T00:00:00Z"
       },
       {
-        "version": "0.1.7.1",
-        "changelog": "Put search first with a responsive compact layout, and move settings into a collapsed panel below results. Existing region and Seerr settings are retained.",
+        "version": "0.1.8.1",
+        "changelog": "Filter offers by provider with remembered browser preferences and an All providers reset. Seerr request controls remain available when selected services have no offers.",
         "targetAbi": "10.10.7.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.8/JustWatch-Jellyfin-10.10.7.zip",
-        "checksum": "02fcd3d2383d1249a11fa000c82bee79",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.9/JustWatch-Jellyfin-10.10.7.zip",
+        "checksum": "de487e3eebe3f2967df1d673ccd77799",
         "timestamp": "2026-10-20T00:00:00Z"
       }
     ]
