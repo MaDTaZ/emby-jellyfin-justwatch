@@ -7,8 +7,8 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / 'dist'
 DIST.mkdir(exist_ok=True)
-VERSION = '0.1.0.0'
-TAG = 'v0.1.0'
+VERSION = '0.1.1.0'
+TAG = 'v0.1.1'
 REPO = 'https://github.com/MaDTaZ/emby-jellyfin-justwatch'
 builds = {
     'JustWatch-Emby-Stable-4.8.10.zip': ('artifacts/emby-stable', 'Emby.Plugin.JustWatch.dll'),
@@ -34,7 +34,7 @@ manifest = [{
     'category': 'General',
     'versions': [{
         'version': VERSION,
-        'changelog': 'First preview: regional availability lookup, grouped offers, prices, and provider links.',
+        'changelog': 'Fix Jellyfin dashboard initialization so settings load and Save and Search buttons work; pass the save response to the dashboard.',
         'targetAbi': '10.10.7.0',
         'sourceUrl': f'{REPO}/releases/download/{TAG}/{jellyfin}',
         'checksum': hashlib.md5((DIST / jellyfin).read_bytes()).hexdigest(),

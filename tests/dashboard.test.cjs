@@ -18,21 +18,56 @@ async function render(host, results, fail = false) {
         },
         addEventListener(type, handler) { events[type] = handler; }
     };
-    vm.runInNewContext(fs.readFileSync(`src/${host}.Plugin.JustWatch/Configuration/configPage.js`, 'utf8'), {
-        URL, define: (_dependencies, factory) => factory()(page),
-        Dashboard: { showLoadingMsg() {}, hideLoadingMsg() {}, alert() {} },
+    const calls = { updates: [], confirmations: [], searches: [] };
+    let source;
+    if (host === 'Jellyfin') {
+        const html = fs.readFileSync('src/Jellyfin.Plugin.JustWatch/Configuration/configPage.html', 'utf8');
+        assert.doesNotMatch(html, /data-controller=/, 'Jellyfin page must initialize without an Emby controller');
+        const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
+        assert.equal(scripts.length, 1, 'Jellyfin configuration script must be embedded in its page');
+        source = scripts[0][1];
+    } else {
+        source = fs.readFileSync(`src/${host}.Plugin.JustWatch/Configuration/configPage.js`, 'utf8');
+    }
+    vm.runInNewContext(source, {
+        URL, document: { querySelector: () => page }, define: (_dependencies, factory) => factory()(page),
+        Dashboard: { showLoadingMsg() {}, hideLoadingMsg() {}, alert() {}, processPluginConfigurationUpdateResult(result) { calls.confirmations.push(result); } },
         ApiClient: {
             getPluginConfiguration: async () => ({ Options: {} }),
-            getUrl: () => '/JustWatch/Search',
+            updatePluginConfiguration: async (_id, config) => { calls.updates.push(config); return { status: 204 }; },
+            getUrl: (_path, parameters) => { calls.searches.push(parameters); return '/JustWatch/Search'; },
             ajax: () => fail ? Promise.reject(new Error('offline')) : Promise.resolve(results)
         }
     });
     events.pageshow.call(page);
+    await new Promise(resolve => setImmediate(resolve));
     events['.justWatchSearchButtonclick']();
     await new Promise(resolve => setImmediate(resolve));
-    return { result: elements.get('.justWatchResults'), button: elements.get('.justWatchSearchButton') };
+    return { result: elements.get('.justWatchResults'), button: elements.get('.justWatchSearchButton'), elements, events, calls, page };
 }
 for (const host of ['Emby', 'Jellyfin']) {
+    test(`${host}: initializes defaults and saves normalized configuration`, async () => {
+        const { elements, events, calls, page } = await render(host, []);
+        assert.equal(elements.get('.justWatchCountry').value, 'US');
+        assert.equal(elements.get('.justWatchLanguage').value, 'en');
+        assert.equal(elements.get('.justWatchResultLimit').value, 8);
+        elements.get('.justWatchCountry').value = 'ca';
+        elements.get('.justWatchLanguage').value = 'EN';
+        elements.get('.justWatchResultLimit').value = '12';
+        let prevented = false;
+        events['.justWatchSettingsFormsubmit']({ preventDefault() { prevented = true; } });
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(prevented, true);
+        assert.equal(calls.updates.length, 1);
+        assert.equal(calls.updates[0].Options.Country, 'CA');
+        assert.equal(calls.updates[0].Options.Language, 'en');
+        assert.equal(calls.updates[0].Options.ResultLimit, 12);
+        assert.equal(calls.confirmations[0].status, 204);
+        events.pageshow.call(page);
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(calls.searches[0].title, 'Arrival');
+    });
+
     test(`${host}: PascalCase and camelCase offers render with prices and categories`, async () => {
         for (const camel of [true, false]) {
             const offer = { ProviderName: 'Example', MonetizationType: 'RENT', Price: 'CA$ 4.99', Url: 'https://example.com/watch', Quality: 'HD' };

@@ -4,7 +4,7 @@ This repository contains a shared JustWatch lookup library plus thin host plugin
 
 ## Downloads and installation
 
-Preview builds: [GitHub Releases](https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/tag/v0.1.0).
+Preview builds: [GitHub Releases](https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/tag/v0.1.1).
 
 ### Jellyfin repository
 
@@ -89,10 +89,16 @@ The default build keeps SDK 4.8.10. To build against a different published SDK, 
 
 ## Release packaging
 
-All plugin assemblies use version 0.1.0.0. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
+All plugin assemblies use version 0.1.1.0. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
 
 ```bash
 python3 scripts/package-release.py
 ```
 
-This creates three flat ZIP archives, SHA-256 checksums, and a Jellyfin manifest containing the ZIP's MD5 checksum as required by Jellyfin. Upload the archives to release `v0.1.0` and commit the matching manifest. Update the script's version, tag, and timestamp for later releases.
+This creates three flat ZIP archives, SHA-256 checksums, and a Jellyfin manifest containing the ZIP's MD5 checksum as required by Jellyfin. Upload the archives to release `v0.1.1` and commit the matching manifest. Update the script's version, tag, and timestamp for later releases.
+
+## 0.1.1 dashboard fix
+
+Jellyfin now initializes its controls with an inline script in the configuration HTML, following Jellyfin's plugin template. The previous Emby-style external controller left the settings and Search controls unbound in Jellyfin. The save response is now forwarded to the dashboard's confirmation handler on both hosts.
+
+Eight dashboard checks pass, including initialization from the actual Jellyfin HTML and settings submission. A local browser check with simulated server responses verifies default settings, Save, and Search. A live Jellyfin server test is still pending. After upgrading from 0.1.0, restart Jellyfin and hard-refresh the configuration page to clear the old page.

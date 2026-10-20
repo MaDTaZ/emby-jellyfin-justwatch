@@ -36,11 +36,6 @@ namespace Jellyfin.Plugin.JustWatch
                     MenuSection = "server",
                     EnableInMainMenu = true,
                     EmbeddedResourcePath = $"{GetType().Namespace}.Configuration.configPage.html"
-                },
-                new PluginPageInfo
-                {
-                    Name = "JustWatchConfigJs",
-                    EmbeddedResourcePath = $"{GetType().Namespace}.Configuration.configPage.js"
                 }
             };
         }

@@ -40,9 +40,9 @@ define([], function () {
             config.Options.ResultLimit = parseInt(query(page, '.justWatchResultLimit').value, 10) || 8;
 
             return ApiClient.updatePluginConfiguration(pluginId, config);
-        }).then(function () {
+        }).then(function (result) {
             Dashboard.hideLoadingMsg();
-            Dashboard.processPluginConfigurationUpdateResult();
+            Dashboard.processPluginConfigurationUpdateResult(result);
         }).catch(function () {
             Dashboard.hideLoadingMsg();
             Dashboard.alert('Could not save JustWatch settings.');
