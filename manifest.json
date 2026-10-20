@@ -9,19 +9,19 @@
     "category": "General",
     "versions": [
       {
-        "version": "0.1.16.0",
-        "changelog": "Preserve unsaved settings when the open page is shown again, and prevent delayed configuration loads from overwriting fields being edited. Settings still require Save to persist.",
+        "version": "0.1.17.0",
+        "changelog": "Fix Emby API response serialization so search and Seerr checks, status, and requests return JSON instead of an empty 204 response. Improve settings-check error messages.",
         "targetAbi": "12.0.0.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.16/JustWatch-Jellyfin-12.0-rc7.zip",
-        "checksum": "42e6b000602d6bc854d3a1f3d3f44dc9",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.17/JustWatch-Jellyfin-12.0-rc7.zip",
+        "checksum": "59414db1108e22a4fe50fa8b22e4f810",
         "timestamp": "2026-10-20T00:00:00Z"
       },
       {
-        "version": "0.1.15.1",
-        "changelog": "Preserve unsaved settings when the open page is shown again, and prevent delayed configuration loads from overwriting fields being edited. Settings still require Save to persist.",
+        "version": "0.1.16.1",
+        "changelog": "Fix Emby API response serialization so search and Seerr checks, status, and requests return JSON instead of an empty 204 response. Improve settings-check error messages.",
         "targetAbi": "10.10.7.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.16/JustWatch-Jellyfin-10.10.7.zip",
-        "checksum": "d780960c412e49405d91204bd0e01671",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.17/JustWatch-Jellyfin-10.10.7.zip",
+        "checksum": "8e7c1d766152eabe6da951634f4d2fb6",
         "timestamp": "2026-10-20T00:00:00Z"
       }
     ]

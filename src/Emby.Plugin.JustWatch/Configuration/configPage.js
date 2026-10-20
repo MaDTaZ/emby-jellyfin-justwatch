@@ -277,10 +277,14 @@ define([], function () {
         const target = query(page, feedback);
         target.textContent = 'Checking…';
         return ApiClient.ajax({ type: method, url: ApiClient.getUrl(path), dataType: 'json' }).then(function (raw) {
-            const result = normalize(raw);
+            const result = normalize(raw || {});
+            if (typeof result.success !== 'boolean') throw new Error('Invalid response');
             target.textContent = result.message || 'The check finished.';
-        }).catch(function () {
-            target.textContent = 'Could not complete the check. Confirm your saved settings and administrator access.';
+        }).catch(function (error) {
+            const status = Number(error && error.status);
+            target.textContent = status === 401 || status === 403 ? 'The server refused this check. Sign in with a server administrator account.'
+                : status === 404 ? 'This check endpoint is unavailable. Update the plugin and restart the server.'
+                : 'The server did not return a valid check response' + (status ? ' (HTTP ' + status + ')' : '') + '. Update the plugin, restart, and check the server log if it continues.';
         }).then(function () { button.disabled = false; });
     }
 

@@ -49,13 +49,13 @@ namespace Emby.Plugin.JustWatch.Api
         private static readonly HttpClient Http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
         private static readonly HttpClient SeerrHttp = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(20) };
 
-        public async Task<SeerrDetails> Get(GetSeerrDetails request)
+        public async Task<object> Get(GetSeerrDetails request)
         {
             try { return await new SeerrClient(SeerrHttp, Plugin.Instance!.Configuration.Options).DetailsAsync(request.TmdbId, request.MediaType, CancellationToken.None); }
             catch (Exception ex) when (IsSeerrFailure(ex)) { return new SeerrDetails { ErrorMessage = "Could not load seasons. Check your Seerr URL and API key." }; }
         }
 
-        public async Task<SeerrResult> Post(RequestSeerrTitle request)
+        public async Task<object> Post(RequestSeerrTitle request)
         {
             try { return await new SeerrClient(SeerrHttp, Plugin.Instance!.Configuration.Options).RequestAsync(new SeerrRequest { TmdbId = request.TmdbId, MediaType = request.MediaType, Seasons = request.Seasons }, CancellationToken.None); }
             catch (Exception ex) when (IsSeerrFailure(ex)) { return new SeerrResult { Success = false, Message = "Could not submit the request. Check your Seerr URL, API key, and selected seasons." }; }
@@ -63,13 +63,13 @@ namespace Emby.Plugin.JustWatch.Api
 
         private static bool IsSeerrFailure(Exception ex) => ex is ArgumentException || ex is InvalidOperationException || ex is HttpRequestException || ex is TaskCanceledException || ex is System.Text.Json.JsonException;
 
-        public async Task<SeerrResult> Get(TestSeerrConnection request)
+        public async Task<object> Get(TestSeerrConnection request)
         {
             try { return await new SeerrClient(SeerrHttp, Plugin.Instance!.Configuration.Options).TestConnectionAsync(CancellationToken.None); }
             catch (Exception ex) when (IsSeerrFailure(ex)) { return new SeerrResult { Message = "Could not connect to Seerr. Check the saved URL and API key." }; }
         }
 
-        public async Task<JustWatchSearchResponse> Get(SearchJustWatch request)
+        public async Task<object> Get(SearchJustWatch request)
         {
             var options = Plugin.Instance?.Configuration.Options ?? new JustWatchOptions();
             var client = new JustWatchClient(Http, options);

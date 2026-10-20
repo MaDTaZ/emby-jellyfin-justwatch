@@ -89,7 +89,7 @@ The default build keeps SDK 4.8.10. To build against a different published SDK, 
 
 ## Release packaging
 
-Current Emby and Jellyfin 12 assemblies use version 0.1.16.0; Jellyfin 10.10.7 uses 0.1.15.1 so newer servers select the .NET 10 build. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
+Current Emby and Jellyfin 12 assemblies use version 0.1.17.0; Jellyfin 10.10.7 uses 0.1.16.1 so newer servers select the .NET 10 build. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
 
 ```bash
 python3 scripts/package-release.py
@@ -207,3 +207,9 @@ The thumbnail-enabled beta DLL was startup-tested on the isolated official Emby 
 Settings load once per live page rather than on every pageshow event, so returning from another tab cannot replace unsaved edits with old saved values. Fields edited during a delayed initial load are preserved while untouched fields receive saved defaults. Failed loads can retry. Draft URL/key values stay in page memory; they are not written to local/session storage or saved automatically. Save remains required for persistence. Search fields/results still clear on navigation as requested.
 
 Validation: 43 dashboard checks include reentry without re-fetching settings and protection of edits during delayed initial loads for both hosts. Emby remains a single-DLL package with the embedded mascot.
+
+## Emby JSON response fix (0.1.17)
+
+Authenticated Emby service calls returned HTTP 204 without a JSON body when handlers returned Task<DTO>. Handlers now return Task<object>, which the Emby service dispatcher serializes correctly. This applies to title search, connection test, Seerr details, and requests. Settings-check feedback distinguishes authorization errors, missing routes, and empty/invalid responses instead of the old generic message; upstream response bodies are not displayed.
+
+The failure was reproduced as an authenticated administrator in the official isolated Emby 4.11.0.8 server. After the fix, a loopback fake Seerr service verified JSON connection success and unauthorized-key failure, status lookup, a simulated movie request, and anonymous rejection. A live JustWatch title search returned a populated JSON envelope. No real Seerr requests were sent. The disposable test script is tests/Emby.Integration/check.py; it refuses to run unless the test instance uses the exact loopback Seerr URL and dummy key.

@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-async function render(host, results, fail = false, details = {State: "notRequested", CanRequest: true, Seasons: [{Number:1,Name:"Season 1"},{Number:2,Name:"Season 2"}]}, configLoader = async () => ({Options:{}})) {
+async function render(host, results, fail = false, details = {State: "notRequested", CanRequest: true, Seasons: [{Number:1,Name:"Season 1"},{Number:2,Name:"Season 2"}]}, configLoader = async () => ({Options:{}}), checkResponse = {Success:true,Message:'Connected to Seerr.'}) {
     const rows = Array.isArray(results) ? results : results.Results || results.results || [];
     const cards = rows.filter(r => r.CanRequestInSeerr || r.canRequestInSeerr).map(r => {
         const badge = {textContent: "", dataset: {}};
@@ -49,7 +49,7 @@ async function render(host, results, fail = false, details = {State: "notRequest
                 calls.ajax.push(options);
                 if (fail) return Promise.reject(new Error('offline'));
                 if (options.type === 'POST') return Promise.resolve({ Success: true, Message: 'Request accepted by Seerr.' });
-                if (String(options.url).includes('Seerr/Test')) return Promise.resolve({Success:true,Message:'Connected to Seerr.'});
+                if (String(options.url).includes('Seerr/Test')) return typeof checkResponse === 'function' ? checkResponse() : Promise.resolve(checkResponse);
                 if (String(options.url).includes('Seerr/Details')) return details === null ? Promise.reject(new Error('status offline')) : Promise.resolve(details);
                 return Promise.resolve(results);
             }
@@ -63,6 +63,20 @@ async function render(host, results, fail = false, details = {State: "notRequest
     return { result: elements.get('.justWatchResults'), button: elements.get('.justWatchSearchButton'), elements, events, calls, page, cards };
 }
 for (const host of ['Emby', 'Jellyfin']) {
+    test(`${host}: check errors distinguish authorization, missing routes, and invalid responses`, async () => {
+        for(const [response,expected] of [
+            [()=>Promise.reject({status:403,responseText:'private-key'}),/administrator/],
+            [()=>Promise.reject({status:404}),/endpoint is unavailable/],
+            [null,/did not return a valid check response/]
+        ]) {
+            const {elements,events}=await render(host,[],false,undefined,undefined,response);
+            await events['.justWatchTestSeerrclick'].call(elements.get('.justWatchTestSeerr'));
+            await new Promise(resolve=>setImmediate(resolve));
+            const message=elements.get('.justWatchSeerrFeedback').textContent;
+            assert.match(message,expected);
+            assert.doesNotMatch(message,/private-key/);
+        }
+    });
     test(`${host}: returning to the page retains unsaved settings without fetching old values again`, async () => {
         let loads=0;
         const {elements,events,page}=await render(host,[],false,undefined,async()=>{loads++;return {Options:{SeerrUrl:'https://saved.example.com'}};});
