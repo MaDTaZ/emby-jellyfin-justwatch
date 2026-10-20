@@ -19,6 +19,7 @@ namespace JustWatch.Plugin.Core
 
     public sealed class SeerrResult
     {
+        public string? State { get; set; }
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
     }
@@ -27,12 +28,16 @@ namespace JustWatch.Plugin.Core
     {
         public int Number { get; set; }
         public string Name { get; set; } = string.Empty;
+        public string State { get; set; } = "notRequested";
+        public bool CanRequest { get; set; } = true;
     }
 
     public sealed class SeerrDetails
     {
         public string? ErrorMessage { get; set; }
         public bool Available { get; set; }
+        public string State { get; set; } = "notRequested";
+        public bool CanRequest { get; set; }
         public IReadOnlyList<SeerrSeason> Seasons { get; set; } = Array.Empty<SeerrSeason>();
     }
 
@@ -69,15 +74,67 @@ namespace JustWatch.Plugin.Core
             if (!response.IsSuccessStatusCode) throw new HttpRequestException(Failure(response.StatusCode));
             using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
             var root = doc.RootElement;
-            var available = root.TryGetProperty("mediaInfo", out var media) && media.ValueKind == JsonValueKind.Object
-                && media.TryGetProperty("status", out var status) && status.ValueKind == JsonValueKind.Number && status.GetInt32() == 5;
+            var state = "notRequested";
+            var seasonStates = new Dictionary<int, string>();
+            if (root.TryGetProperty("mediaInfo", out var media) && media.ValueKind == JsonValueKind.Object)
+            {
+                state = MediaState(media);
+                if (media.TryGetProperty("seasons", out var storedSeasons) && storedSeasons.ValueKind == JsonValueKind.Array)
+                    foreach (var season in storedSeasons.EnumerateArray())
+                        if (TryNumber(season, "seasonNumber", out var n)) seasonStates[n] = MediaState(season);
+                if (media.TryGetProperty("requests", out var requests) && requests.ValueKind == JsonValueKind.Array)
+                    foreach (var entry in requests.EnumerateArray())
+                    {
+                        if (entry.TryGetProperty("is4k", out var is4k) && is4k.ValueKind == JsonValueKind.True) continue;
+                        if (!TryNumber(entry, "status", out var requestStatus) || (requestStatus != 1 && requestStatus != 2)) continue;
+                        var requestState = requestStatus == 1 ? "pending" : "requested";
+                        if (state == "notRequested") state = requestState;
+                        if (entry.TryGetProperty("seasons", out var requestedSeasons) && requestedSeasons.ValueKind == JsonValueKind.Array)
+                            foreach (var season in requestedSeasons.EnumerateArray())
+                                if (TryNumber(season, "seasonNumber", out var n)
+                                    && (!seasonStates.TryGetValue(n, out var old) || old == "notRequested")) seasonStates[n] = requestState;
+                    }
+            }
             var seasons = new List<SeerrSeason>();
             if (root.TryGetProperty("seasons", out var array) && array.ValueKind == JsonValueKind.Array)
                 foreach (var season in array.EnumerateArray())
-                    if (season.TryGetProperty("seasonNumber", out var number) && number.TryGetInt32(out var n) && n >= 0)
-                        seasons.Add(new SeerrSeason { Number = n, Name = season.TryGetProperty("name", out var name) ? name.GetString() ?? "Season " + n : "Season " + n });
-            return new SeerrDetails { Available = available, Seasons = seasons.OrderBy(s => s.Number).ToList() };
+                    if (TryNumber(season, "seasonNumber", out var n) && n >= 0)
+                    {
+                        var seasonState = seasonStates.TryGetValue(n, out var stored) ? stored : "notRequested";
+                        seasons.Add(new SeerrSeason {
+                            Number = n, Name = season.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String ? name.GetString() ?? "Season " + n : "Season " + n,
+                            State = seasonState, CanRequest = state != "available" && state != "blocked" && Requestable(seasonState)
+                        });
+                    }
+            return new SeerrDetails {
+                Available = state == "available", State = state,
+                CanRequest = type == "tv" ? seasons.Any(season => season.CanRequest) : Requestable(state),
+                Seasons = seasons.OrderBy(season => season.Number).ToList()
+            };
         }
+
+        private static bool TryNumber(JsonElement item, string name, out int number)
+        {
+            number = 0;
+            return item.ValueKind == JsonValueKind.Object && item.TryGetProperty(name, out var value)
+                && value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out number);
+        }
+
+        private static string MediaState(JsonElement media)
+        {
+            if (!TryNumber(media, "status", out var status)) return "notRequested";
+            switch (status)
+            {
+                case 2: return "pending";
+                case 3: return "requested";
+                case 4: return "partial";
+                case 5: return "available";
+                case 6: return "blocked";
+                default: return "notRequested";
+            }
+        }
+
+        private static bool Requestable(string state) => state == "notRequested" || state == "partial";
 
         public async Task<SeerrResult> RequestAsync(SeerrRequest input, CancellationToken token)
         {
@@ -87,9 +144,12 @@ namespace JustWatch.Plugin.Core
                 throw new ArgumentException("Choose at least one season to request.");
             // A preflight also avoids submitting fully available titles.
             var details = await DetailsAsync(input.TmdbId, input.MediaType, token).ConfigureAwait(false);
-            if (details.Available) return new SeerrResult { Success = false, Message = "Already available in Seerr." };
+            if (!details.CanRequest) return new SeerrResult { Success = false, State = details.State,
+                Message = details.Available ? "Already available in Seerr." : details.State == "blocked" ? "This title is blocklisted in Seerr." : "Already requested or waiting for approval in Seerr." };
             if (input.MediaType == "tv" && seasons.Any(n => !details.Seasons.Any(s => s.Number == n)))
                 throw new ArgumentException("One of the selected seasons is no longer available. Choose seasons again.");
+            if (input.MediaType == "tv" && seasons.Any(n => !details.Seasons.First(s => s.Number == n).CanRequest))
+                return new SeerrResult { Success = false, State = details.State, Message = "Some selected seasons are already available or requested. Choose seasons again." };
             var payload = new Dictionary<string, object> { ["mediaType"] = input.MediaType, ["mediaId"] = input.TmdbId };
             if (input.MediaType == "tv") payload["seasons"] = seasons;
             using var request = CreateRequest(HttpMethod.Post, "request");
@@ -98,7 +158,7 @@ namespace JustWatch.Plugin.Core
             if (!response.IsSuccessStatusCode) return new SeerrResult { Success = false, Message = Failure(response.StatusCode) };
             using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
             var pending = doc.RootElement.TryGetProperty("status", out var status) && status.ValueKind == JsonValueKind.Number && status.GetInt32() == 1;
-            return new SeerrResult { Success = true, Message = pending ? "Requested — waiting for approval in Seerr." : "Request accepted by Seerr." };
+            return new SeerrResult { Success = true, State = pending ? "pending" : "requested", Message = pending ? "Requested — waiting for approval in Seerr." : "Request accepted by Seerr." };
         }
 
         private static string Failure(HttpStatusCode status)

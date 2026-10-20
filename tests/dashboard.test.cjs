@@ -3,7 +3,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-async function render(host, results, fail = false) {
+async function render(host, results, fail = false, details = {State: "notRequested", CanRequest: true, Seasons: [{Number:1,Name:"Season 1"},{Number:2,Name:"Season 2"}]}) {
+    const cards = results.filter(r => r.CanRequestInSeerr || r.canRequestInSeerr).map(r => {
+        const badge = {textContent: "", dataset: {}};
+        const panel = {textContent: "", innerHTML: ""};
+        const card = {querySelector: selector => selector === ".jw-seerr-status" ? badge : panel, badge};
+        card.button = {disabled: true, textContent: "", dataset: {seerrId: String(r.TmdbId || r.tmdbId), seerrType: (r.ObjectType || r.objectType) === "SHOW" ? "tv" : "movie"}, closest: () => card};
+        return card;
+    });
     const elements = new Map();
     const events = {};
     const page = {
@@ -12,6 +19,7 @@ async function render(host, results, fail = false) {
             if (!elements.has(selector)) elements.set(selector, {
                 value: selector === '.justWatchTitle' ? 'Arrival' : '',
                 innerHTML: '', textContent: '', disabled: false,
+                querySelectorAll: () => cards.map(c => c.button),
                 addEventListener(type, handler) { events[selector + type] = handler; }
             });
             return elements.get(selector);
@@ -40,7 +48,7 @@ async function render(host, results, fail = false) {
                 calls.ajax.push(options);
                 if (fail) return Promise.reject(new Error('offline'));
                 if (options.type === 'POST') return Promise.resolve({ Success: true, Message: 'Request accepted by Seerr.' });
-                if (String(options.url).includes('Seerr/Details')) return Promise.resolve({ Seasons: [{Number: 1, Name: 'Season 1'}, {Number: 2, Name: 'Season 2'}] });
+                if (String(options.url).includes('Seerr/Details')) return details === null ? Promise.reject(new Error('status offline')) : Promise.resolve(details);
                 return Promise.resolve(results);
             }
         }
@@ -49,7 +57,7 @@ async function render(host, results, fail = false) {
     await new Promise(resolve => setImmediate(resolve));
     events['.justWatchSearchButtonclick']();
     await new Promise(resolve => setImmediate(resolve));
-    return { result: elements.get('.justWatchResults'), button: elements.get('.justWatchSearchButton'), elements, events, calls, page };
+    return { result: elements.get('.justWatchResults'), button: elements.get('.justWatchSearchButton'), elements, events, calls, page, cards };
 }
 for (const host of ['Emby', 'Jellyfin']) {
     test(`${host}: initializes defaults and saves normalized configuration`, async () => {
@@ -115,7 +123,8 @@ for (const host of ['Emby', 'Jellyfin']) {
         const view = await render(host, [{Title: 'Arrival', TmdbId: 329865, ObjectType: 'MOVIE', CanRequestInSeerr: true}]);
         assert.match(view.result.innerHTML, /jw-direct-request/);
         const panel = {textContent: ''};
-        const card = {querySelector: () => panel};
+        const badge = {textContent:'',dataset:{}};
+        const card = {querySelector: selector => selector === '.jw-seerr-status' ? badge : panel};
         const button = {disabled: false, dataset: {seerrId: '329865', seerrType: 'movie'}, closest: () => card};
         view.events['.justWatchResultsclick']({target: {closest: () => button}});
         await new Promise(resolve => setImmediate(resolve));
@@ -131,7 +140,8 @@ for (const host of ['Emby', 'Jellyfin']) {
         const view = await render(host, [{Title: 'Show', TmdbId: 1396, ObjectType: 'SHOW', CanRequestInSeerr: true}]);
         const panel = {textContent: '', innerHTML: '', querySelectorAll: () => [{value:'2'}]};
         let button;
-        const card = {querySelector: (selector) => selector === '.jw-request-panel' ? panel : button};
+        const badge = {textContent:'',dataset:{}};
+        const card = {querySelector: (selector) => selector === '.jw-request-panel' ? panel : selector === '.jw-seerr-status' ? badge : button};
         button = {disabled: false, dataset: {seerrId: '1396', seerrType: 'tv'}, closest: () => card};
         view.events['.justWatchResultsclick']({target: {closest: () => button}});
         await new Promise(resolve => setImmediate(resolve));
@@ -141,6 +151,29 @@ for (const host of ['Emby', 'Jellyfin']) {
         view.events['.justWatchResultsclick']({target: {closest: () => submit}});
         await new Promise(resolve => setImmediate(resolve));
         assert.deepEqual(JSON.parse(view.calls.ajax.find(c => c.type === 'POST').data).Seasons, [2]);
+    });
+    test(`${host}: statuses disable duplicate movie requests but leave unrequested seasons usable`, async () => {
+        for (const state of ['available','pending','requested','blocked']) {
+            const view = await render(host, [{Title:'Movie',TmdbId:1,ObjectType:'MOVIE',CanRequestInSeerr:true}], false, {State:state,CanRequest:false,Available:state==='available'});
+            assert.equal(view.cards[0].button.disabled, true);
+            assert.equal(view.cards[0].badge.dataset.state, state);
+        }
+        const tv = await render(host, [{Title:'Show',TmdbId:2,ObjectType:'SHOW',CanRequestInSeerr:true}], false, {State:'partial',CanRequest:true});
+        assert.equal(tv.cards[0].button.disabled, false);
+        assert.equal(tv.cards[0].button.textContent, 'Choose seasons');
+        assert.equal(tv.calls.ajax.filter(c=>c.type==='POST').length, 0);
+    });
+    test(`${host}: failed status lookup is visibly unknown and does not claim availability`, async () => {
+        const view = await render(host, [{Title:'Movie',TmdbId:1,ObjectType:'MOVIE',CanRequestInSeerr:true}], false, null);
+        assert.equal(view.cards[0].badge.textContent, 'Status unavailable');
+        assert.equal(view.cards[0].button.disabled, false);
+    });
+    test(`${host}: renders safe lazy posters and falls back for missing or unsafe URLs`, async () => {
+        const view = await render(host, [{Title:'Arrival',PosterUrl:'https://images.justwatch.com/poster/123/s166'},{Title:'Unknown',PosterUrl:'javascript:alert(1)'}]);
+        assert.equal((view.result.innerHTML.match(/class="jw-poster"/g)||[]).length, 1);
+        assert.match(view.result.innerHTML, /loading="lazy"/);
+        assert.doesNotMatch(view.result.innerHTML, /javascript:/);
+        assert.match(view.result.innerHTML, /jw-poster-fallback/);
     });
     test(`${host}: escapes titles and rejects script links`, async () => {
         const { result } = await render(host, [{ Title: '<script>alert(1)</script>', JustWatchUrl: 'javascript:alert(1)', Offers: [{ProviderName: '<img onerror=x>', Url: 'javascript:alert(1)'}] }]);

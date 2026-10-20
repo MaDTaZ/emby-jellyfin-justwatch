@@ -8,19 +8,19 @@
     "category": "General",
     "versions": [
       {
-        "version": "0.1.5.0",
-        "changelog": "Direct Seerr requests using a saved API key, TV season selection, and administrator-protected endpoints.",
+        "version": "0.1.6.0",
+        "changelog": "Seerr status badges, smarter request and season buttons, and movie/TV posters.",
         "targetAbi": "12.0.0.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.5/JustWatch-Jellyfin-12.0-rc7.zip",
-        "checksum": "184740b9e239b2186bdfeeee8bbe3e2a",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.6/JustWatch-Jellyfin-12.0-rc7.zip",
+        "checksum": "e322072f6a250a6507386a1b1085fa75",
         "timestamp": "2026-10-20T00:00:00Z"
       },
       {
-        "version": "0.1.4.1",
-        "changelog": "Direct Seerr requests using a saved API key, TV season selection, and administrator-protected endpoints.",
+        "version": "0.1.5.1",
+        "changelog": "Seerr status badges, smarter request and season buttons, and movie/TV posters.",
         "targetAbi": "10.10.7.0",
-        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.5/JustWatch-Jellyfin-10.10.7.zip",
-        "checksum": "21711778f0ab9b9e82e8bde65b88d82d",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/v0.1.6/JustWatch-Jellyfin-10.10.7.zip",
+        "checksum": "34f8ff1214f9fee30ce22948d1b5c951",
         "timestamp": "2026-10-20T00:00:00Z"
       }
     ]

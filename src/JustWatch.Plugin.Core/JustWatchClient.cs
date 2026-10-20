@@ -76,7 +76,7 @@ query WhereToWatch($country: Country!, $language: Language!, $first: Int!, $filt
   popularTitles(country: $country, filter: $filter, first: $first, sortBy: POPULAR, sortRandomSeed: 0) {
     edges { node {
       id objectType
-      content(country: $country, language: $language) { title originalReleaseYear fullPath externalIds { tmdbId } }
+      content(country: $country, language: $language) { title originalReleaseYear fullPath posterUrl(profile: S166) externalIds { tmdbId } }
       offers(country: $country, platform: WEB, filter: {bestOnly: false}) {
         monetizationType presentationType retailPrice(language: $language) currency standardWebURL
         package { packageId clearName }
@@ -97,6 +97,7 @@ query WhereToWatch($country: Country!, $language: Language!, $first: Int!, $filt
                 Title = GetString(content, "title") ?? string.Empty,
                 Year = GetInt(content, "originalReleaseYear"),
                 ObjectType = GetString(item, "objectType"),
+                PosterUrl = SafeUrl(GetString(content, "posterUrl"), "https://images.justwatch.com"),
                 Country = _options.Country.ToUpperInvariant(),
                 JustWatchUrl = SafeUrl(GetString(content, "fullPath"), "https://www.justwatch.com")
             };

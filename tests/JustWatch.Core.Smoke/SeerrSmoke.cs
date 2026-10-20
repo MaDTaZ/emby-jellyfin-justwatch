@@ -34,6 +34,24 @@ static class SeerrSmoke
         handler.PostStatus = HttpStatusCode.Unauthorized;
         var rejected = await client.RequestAsync(new SeerrRequest { TmdbId = 1, MediaType = "movie" }, default);
         Check(!rejected.Success && !rejected.Message.Contains("test-api-key"), "bad key sanitized");
+        handler.PostStatus = HttpStatusCode.Created;
+        foreach (var pair in new[] { (2, "pending"), (3, "requested"), (5, "available"), (6, "blocked") })
+        {
+            handler.MediaStatus = pair.Item1;
+            var state = await client.DetailsAsync(1, "movie", default);
+            Check(state.State == pair.Item2 && !state.CanRequest, "non-requestable movie state " + pair.Item2);
+            var count = handler.Posts;
+            Check(!(await client.RequestAsync(new SeerrRequest { TmdbId = 1, MediaType = "movie" }, default)).Success, "preflight blocks " + pair.Item2);
+            Check(handler.Posts == count, "no duplicate POST for " + pair.Item2);
+        }
+        handler.MediaStatus = 4;
+        handler.MixedSeasons = true;
+        var mixed = await client.DetailsAsync(1396, "tv", default);
+        Check(mixed.CanRequest && !mixed.Seasons[0].CanRequest && mixed.Seasons[1].CanRequest, "partial TV keeps only new seasons requestable");
+        var posts = handler.Posts;
+        Check(!(await client.RequestAsync(new SeerrRequest { TmdbId=1396, MediaType="tv", Seasons=new[]{1} }, default)).Success, "existing season blocked");
+        Check(handler.Posts == posts, "existing season does not POST");
+        Check((await client.RequestAsync(new SeerrRequest { TmdbId=1396, MediaType="tv", Seasons=new[]{2} }, default)).Success, "new season remains requestable");
     }
     static void Check(bool ok, string name) { if (!ok) throw new Exception(name); }
     static async Task Invalid(Func<Task<SeerrResult>> action)
@@ -44,6 +62,8 @@ static class SeerrSmoke
     sealed class FakeSeerr : HttpMessageHandler
     {
         public bool Available;
+        public int MediaStatus = 1;
+        public bool MixedSeasons;
         public HttpStatusCode PostStatus = HttpStatusCode.Created;
         public string? LastBody, LastPath, Key;
         public int Posts;
@@ -51,7 +71,10 @@ static class SeerrSmoke
         {
             Key = request.Headers.GetValues("X-Api-Key").Single();
             LastPath = request.RequestUri!.AbsolutePath;
-            if (request.Method == HttpMethod.Get) return Json(HttpStatusCode.OK, "{\"mediaInfo\":{\"status\":" + (Available ? 5 : 1) + "},\"seasons\":[{\"seasonNumber\":1,\"name\":\"Season 1\"},{\"seasonNumber\":2,\"name\":\"Season 2\"}]}");
+            if (request.Method == HttpMethod.Get) return Json(HttpStatusCode.OK, JsonSerializer.Serialize(new {
+                mediaInfo = new { status = Available ? 5 : MediaStatus, seasons = MixedSeasons ? new[] {new {seasonNumber=1,status=5}} : Array.Empty<object>() },
+                seasons = new[] {new {seasonNumber=1,name="Season 1"}, new {seasonNumber=2,name="Season 2"}}
+            }));
             Posts++;
             LastBody = await request.Content!.ReadAsStringAsync(token);
             return Json(PostStatus, "{\"status\":1}");

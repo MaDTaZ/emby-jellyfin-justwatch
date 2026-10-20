@@ -66,6 +66,52 @@ define([], function () {
         return value;
     }
 
+    function statusLabel(state) {
+        return { available: 'Available', pending: 'Pending approval', requested: 'Requested', partial: 'Partially available', blocked: 'Blocked in Seerr', notRequested: 'Not requested' }[state] || 'Status unavailable';
+    }
+
+    function setStatus(button, state) {
+        const badge = button.closest('.jw-result').querySelector('.jw-seerr-status');
+        badge.textContent = statusLabel(state);
+        badge.dataset.state = state;
+    }
+
+    function applySeerrDetails(button, raw) {
+        const details = normalize(raw);
+        if (details.errormessage) throw new Error('Seerr status unavailable');
+        const state = details.state || (details.available ? 'available' : 'notRequested');
+        setStatus(button, state);
+        button.disabled = details.canrequest === false || details.available === true;
+        button.textContent = button.disabled ? (state === 'partial' || state === 'notRequested' ? 'No new seasons' : statusLabel(state))
+            : button.dataset.seerrType === 'tv' ? 'Choose seasons' : 'Request';
+    }
+
+    function refreshSeerrStatuses(page) {
+        const generation = (page.seerrStatusGeneration || 0) + 1;
+        page.seerrStatusGeneration = generation;
+        const buttons = Array.from(query(page, '.justWatchResults').querySelectorAll('.jw-direct-request'));
+        let next = 0;
+        async function worker() {
+            while (next < buttons.length && generation === page.seerrStatusGeneration) {
+                const button = buttons[next++];
+                try {
+                    const result = await ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('JustWatch/Seerr/Details', {
+                        tmdbId: Number(button.dataset.seerrId), mediaType: button.dataset.seerrType
+                    }), dataType: 'json' });
+                    if (generation !== page.seerrStatusGeneration || button.isConnected === false) continue;
+                    applySeerrDetails(button, result);
+                } catch (_) {
+                    if (generation !== page.seerrStatusGeneration || button.isConnected === false) continue;
+                    setStatus(button, 'unknown');
+                    button.disabled = false;
+                    button.textContent = button.dataset.seerrType === 'tv' ? 'Choose seasons' : 'Request';
+                }
+            }
+        }
+        // Keep status lookups responsive without flooding Seerr for larger searches.
+        for (let i = 0; i < Math.min(3, buttons.length); i++) worker();
+    }
+
     function renderResults(page, results) {
         const container = query(page, '.justWatchResults');
         if (!results || !results.length) {
@@ -117,15 +163,18 @@ define([], function () {
             const seerrHref = safeUrl(item.seerrurl);
             const type = String(item.objecttype || '').toUpperCase() === 'SHOW' ? 'tv' : 'movie';
             const canRequest = item.canrequestinseerr && Number.isInteger(Number(item.tmdbid)) && Number(item.tmdbid) > 0;
-            return '<article class="jw-result"><header class="jw-result-header"><div><p class="jw-eyebrow">Availability in '
+            const poster = safeUrl(item.posterurl);
+            return '<article class="jw-result"><header class="jw-result-header"><div class="jw-heading-content"><div class="jw-poster-wrap"><span class="jw-poster-fallback" aria-hidden="true">' + escapeHtml(String(item.title || '?').charAt(0)) + '</span>'
+                + (poster ? '<img class="jw-poster" src="' + poster + '" alt="Poster for ' + escapeHtml(item.title) + '" loading="lazy" decoding="async" referrerpolicy="no-referrer">' : '') + '</div><div class="jw-title-content"><p class="jw-eyebrow">Availability in '
                 + escapeHtml(item.country) + '</p><h3>' + escapeHtml(item.title)
-                + (item.year ? ' <span class="jw-year">' + escapeHtml(item.year) + '</span>' : '') + '</h3></div>'
+                + (item.year ? ' <span class="jw-year">' + escapeHtml(item.year) + '</span>' : '') + '</h3>' + (canRequest ? '<span class="jw-seerr-status" role="status">Checking Seerr…</span>' : '') + '</div></div>'
                 + '<div class="jw-actions">'
-                + (canRequest ? '<button type="button" class="jw-source jw-seerr jw-direct-request" data-seerr-id="' + Number(item.tmdbid) + '" data-seerr-type="' + type + '">' + (type === 'tv' ? 'Choose seasons' : 'Request') + '</button>' : '')
+                + (canRequest ? '<button type="button" class="jw-source jw-seerr jw-direct-request" disabled data-seerr-id="' + Number(item.tmdbid) + '" data-seerr-type="' + type + '">' + (type === 'tv' ? 'Choose seasons' : 'Request') + '</button>' : '')
                 + (seerrHref ? '<a class="jw-source jw-seerr" target="_blank" rel="noopener noreferrer" href="' + seerrHref + '">' + (canRequest ? 'Open in Seerr' : 'Request in Seerr') + ' <span aria-hidden="true">↗</span></a>' : '')
                 + (href ? '<a class="jw-source" target="_blank" rel="noopener noreferrer" href="' + href + '">JustWatch <span aria-hidden="true">↗</span></a>' : '')
                 + '</div></header><div class="jw-request-panel" role="status" aria-live="polite"></div>' + offers + '<p class="jw-note">Availability and prices can change. Confirm details with the provider.</p></article>';
         }).join('');
+        refreshSeerrStatuses(page);
     }
 
     function requestFeedback(button, panel, promise) {
@@ -134,7 +183,13 @@ define([], function () {
         return promise.then(function (raw) {
             const result = normalize(raw);
             panel.textContent = result.message || (result.success ? 'Requested in Seerr.' : 'Seerr could not complete the request.');
-            if (result.success) { button.textContent = 'Requested'; return; }
+            if (result.success || result.state) {
+                const state = result.state || 'requested';
+                setStatus(button, state);
+                button.disabled = button.dataset.seerrType !== 'tv' || state === 'available' || state === 'blocked';
+                button.textContent = button.disabled ? statusLabel(state) : 'Choose seasons';
+                return;
+            }
             button.disabled = false;
         }).catch(function () {
             button.disabled = false;
@@ -172,12 +227,13 @@ define([], function () {
             const details = normalize(raw);
             button.disabled = false;
             if (details.errormessage) { panel.textContent = details.errormessage; return; }
-            if (details.available) { panel.textContent = 'Already available in Seerr.'; return; }
+            applySeerrDetails(button, details);
+            if (details.available || details.canrequest === false) { panel.textContent = 'No new seasons to request. Check the status in Seerr.'; return; }
             const seasons = details.seasons || [];
             if (!seasons.length) { panel.textContent = 'No seasons found. Open this title in Seerr to check it.'; return; }
             panel.innerHTML = '<p>Choose seasons to request</p><div class="jw-season-grid">' + seasons.map(function (rawSeason) {
                 const season = normalize(rawSeason);
-                return '<label class="jw-season"><input type="checkbox" value="' + escapeHtml(season.number) + '"> ' + escapeHtml(season.name) + '</label>';
+                return '<label class="jw-season"><input type="checkbox" value="' + escapeHtml(season.number) + '"' + (season.canrequest === false ? ' disabled' : '') + '> ' + escapeHtml(season.name) + (season.state && season.state !== 'notRequested' ? ' · ' + escapeHtml(statusLabel(season.state)) : '') + '</label>';
             }).join('') + '</div><button type="button" class="jw-source jw-seerr" data-seerr-action="submit" data-seerr-id="' + id + '" data-seerr-type="tv">Request selected seasons</button>';
         }).catch(function () {
             button.disabled = false;
@@ -227,6 +283,9 @@ define([], function () {
                 event.preventDefault();
                 saveConfig(page);
             });
+            query(page, '.justWatchResults').addEventListener('error', function (event) {
+                if (event.target.classList.contains('jw-poster')) event.target.hidden = true;
+            }, true);
             query(page, '.justWatchResults').addEventListener('click', function (event) { handleSeerrClick(page, event); });
             query(page, '.justWatchSearchButton').addEventListener('click', function () {
                 search(page);

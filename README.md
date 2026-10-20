@@ -14,7 +14,7 @@ For Jellyfin 10.10.7 or 12.0-rc7, go to Dashboard → Plugins → Repositories, 
 https://raw.githubusercontent.com/MaDTaZ/emby-jellyfin-justwatch/main/manifest.json
 ```
 
-Refresh the plugin catalog, install **JustWatch**, then restart Jellyfin. The feed includes separate builds: 0.1.4.1 for Jellyfin 10.10.7 and 0.1.5.0 for Jellyfin 12.0-rc7. The 12.0 build targets .NET 10 and the exact 12.0.0-rc7 SDK. Other server generations need matching builds. Repository and package downloads are verified separately from live server installation, which still needs testing.
+Refresh the plugin catalog, install **JustWatch**, then restart Jellyfin. The feed includes separate builds: 0.1.5.1 for Jellyfin 10.10.7 and 0.1.6.0 for Jellyfin 12.0-rc7. The 12.0 build targets .NET 10 and the exact 12.0.0-rc7 SDK. Other server generations need matching builds. Repository and package downloads are verified separately from live server installation, which still needs testing.
 
 ### Emby stable and beta
 
@@ -89,13 +89,13 @@ The default build keeps SDK 4.8.10. To build against a different published SDK, 
 
 ## Release packaging
 
-Current Emby and Jellyfin 12 assemblies use version 0.1.5.0; Jellyfin 10.10.7 uses 0.1.4.1 so newer servers select the .NET 10 build. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
+Current Emby and Jellyfin 12 assemblies use version 0.1.6.0; Jellyfin 10.10.7 uses 0.1.5.1 so newer servers select the .NET 10 build. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
 
 ```bash
 python3 scripts/package-release.py
 ```
 
-This creates four flat ZIP archives, SHA-256 checksums, and a Jellyfin manifest containing the ZIP's MD5 checksum as required by Jellyfin. Upload the archives to release `v0.1.5` and commit the matching manifest. Update the script's version, tag, and timestamp for later releases.
+This creates four flat ZIP archives, SHA-256 checksums, and a Jellyfin manifest containing the ZIP's MD5 checksum as required by Jellyfin. Upload the archives to release `v0.1.6` and commit the matching manifest. Update the script's version, tag, and timestamp for later releases.
 
 ## 0.1.1 dashboard fix
 
@@ -137,3 +137,11 @@ In JustWatch settings, save your Seerr base URL and the API key from Seerr's set
 Direct requests use the API key account, Seerr's default server/profile, and that account's approval rules. They may therefore be automatically approved. Direct request and season-list endpoints require server administrator privileges. The key is sent only to the configured Seerr API in an HTTP header, never in title links or search results. Redirects are disabled for key-bearing connections; save Seerr's final URL. Requests for fully available titles are stopped before submission, and duplicate/conflict responses are displayed without automatically retrying requests.
 
 Validation: 16 dashboard checks, shared-client request contract checks, and four builds pass. An isolated running Jellyfin 12.0-rc7 server was tested against a loopback simulated Seerr service: movie and selected-season requests succeeded, duplicates were handled, saved keys stayed out of search results, anonymous requests returned 401, and non-admin requests returned 403. No requests were submitted to the user's actual Seerr instance. The Emby services compile against stable and exact beta SDK references; live Emby API execution still needs testing.
+
+## Seerr status badges and posters (0.1.6)
+
+When a Seerr API key is configured, results check Seerr in the background (at most three concurrent lookups) and display Available, Pending approval, Requested, Partially available, Blocked in Seerr, or Not requested. Movies that are already available, pending, requested, or blocked cannot be submitted again. TV shows can still request new seasons: season-level availability and active standard-resolution requests disable only the affected checkboxes. Submit rechecks the status server-side to handle changes after the page loaded. Failed status lookups say Status unavailable; they never claim a title is available, and a later request still performs the server preflight.
+
+Posters come from JustWatch, load lazily, and have a fallback when missing or broken. Status lookups never submit requests automatically. The existing Seerr URL and API key settings are retained.
+
+Validation: 22 dashboard tests and expanded shared-client checks cover status labels, disabled movie requests, partially available TV seasons, unknown status, and poster URLs/fallbacks. All four builds pass. An isolated running Jellyfin 12.0-rc7 server with simulated Seerr responses verified each non-requestable movie state and new-season availability; a live JustWatch search verified a poster URL. The browser preview uses a real poster and simulated Seerr availability. No requests were submitted to the user's real Seerr server.
