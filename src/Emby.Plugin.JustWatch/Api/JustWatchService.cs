@@ -44,6 +44,18 @@ namespace Emby.Plugin.JustWatch.Api
         public int[] Seasons { get; set; } = Array.Empty<int>();
     }
 
+    [Route("/JustWatch/Providers", "GET")]
+    public sealed class GetDiscoverProviders : IReturn<IReadOnlyList<JustWatchProvider>> { public string Country { get; set; } = "US"; }
+
+    [Route("/JustWatch/Discover", "GET")]
+    public sealed class DiscoverJustWatch : IReturn<JustWatchDiscoverResponse>
+    {
+        public string Country { get; set; } = "US";
+        public string? MediaType { get; set; }
+        public string? Providers { get; set; }
+        public string? After { get; set; }
+    }
+
     public sealed class JustWatchService : IService
     {
         private static readonly HttpClient Http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
@@ -68,6 +80,12 @@ namespace Emby.Plugin.JustWatch.Api
             try { return await new SeerrClient(SeerrHttp, Plugin.Instance!.Configuration.Options).TestConnectionAsync(CancellationToken.None); }
             catch (Exception ex) when (IsSeerrFailure(ex)) { return new SeerrResult { Message = "Could not connect to Seerr. Check the saved URL and API key." }; }
         }
+
+        public async Task<object> Get(GetDiscoverProviders request)
+            => await new JustWatchClient(Http, Plugin.Instance!.Configuration.Options).ProvidersAsync(request.Country, CancellationToken.None);
+
+        public async Task<object> Get(DiscoverJustWatch request)
+            => await new JustWatchClient(Http, Plugin.Instance!.Configuration.Options).DiscoverAsync(request.Country, request.MediaType, request.Providers, request.After, CancellationToken.None);
 
         public async Task<object> Get(SearchJustWatch request)
         {

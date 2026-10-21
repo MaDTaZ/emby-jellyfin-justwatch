@@ -80,6 +80,22 @@ namespace Jellyfin.Plugin.JustWatch.Api
             { return BadRequest(new SeerrResult { Message = "Cleanup stopped after removing " + removed + " entries. Existing backups and settings were retained. Check plugin-folder permissions." }); }
         }
 
+        [HttpGet("Providers")]
+        public async Task<ActionResult<IReadOnlyList<JustWatchProvider>>> Providers([FromQuery] string country, CancellationToken token)
+        {
+            try { return Ok(await new JustWatchClient(Http, Plugin.Instance!.Configuration.Options).ProvidersAsync(country, token)); }
+            catch (Exception ex) when (ex is ArgumentException || ex is HttpRequestException || ex is TaskCanceledException || ex is System.Text.Json.JsonException)
+            { return BadRequest(new SeerrResult { Message = ex is ArgumentException ? ex.Message : "Could not load streaming services. Try again later." }); }
+        }
+
+        [HttpGet("Discover")]
+        public async Task<ActionResult<JustWatchDiscoverResponse>> Discover([FromQuery] string country, [FromQuery] string? mediaType, [FromQuery] string? providers, [FromQuery] string? after, CancellationToken token)
+        {
+            try { return await new JustWatchClient(Http, Plugin.Instance!.Configuration.Options).DiscoverAsync(country, mediaType, providers, after, token); }
+            catch (Exception ex) when (ex is ArgumentException || ex is HttpRequestException || ex is TaskCanceledException || ex is System.Text.Json.JsonException)
+            { return BadRequest(new SeerrResult { Message = ex is ArgumentException ? ex.Message : "Discover could not load titles. Try again later." }); }
+        }
+
         [HttpGet("Search")]
         public async Task<JustWatchSearchResponse> Search(
             [FromQuery] string title,

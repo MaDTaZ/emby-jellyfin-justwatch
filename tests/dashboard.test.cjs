@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-async function render(host, results, fail = false, details = {State: "notRequested", CanRequest: true, Seasons: [{Number:1,Name:"Season 1"},{Number:2,Name:"Season 2"}]}, configLoader = async () => ({Options:{}}), checkResponse = {Success:true,Message:'Connected to Seerr.'}) {
+async function render(host, results, fail = false, details = {State: "notRequested", CanRequest: true, Seasons: [{Number:1,Name:"Season 1"},{Number:2,Name:"Season 2"}]}, configLoader = async () => ({Options:{}}), checkResponse = {Success:true,Message:'Connected to Seerr.'}, discoverFixture = {providers:[],pages:[]}) {
     const rows = Array.isArray(results) ? results : results.Results || results.results || [];
     const cards = rows.filter(r => r.CanRequestInSeerr || r.canRequestInSeerr).map(r => {
         const badge = {textContent: "", dataset: {}};
@@ -19,7 +19,7 @@ async function render(host, results, fail = false, details = {State: "notRequest
         querySelector(selector) {
             if (!elements.has(selector)) elements.set(selector, {
                 value: selector === '.justWatchTitle' ? 'Arrival' : '',
-                focus() { this.focused = true; }, innerHTML: '', textContent: '', disabled: false, options: [{textContent:''}],
+                setAttribute(name,value) { this[name]=value; }, focus() { this.focused = true; }, innerHTML: '', textContent: '', disabled: false, options: [{textContent:''}],
                 querySelectorAll: selector => selector === '.jw-direct-request' ? cards.map(c => c.button) : [],
                 addEventListener(type, handler) { events[selector + type] = handler; }
             });
@@ -48,6 +48,8 @@ async function render(host, results, fail = false, details = {State: "notRequest
             ajax: (options) => {
                 calls.ajax.push(options);
                 if (fail) return Promise.reject(new Error('offline'));
+                if (String(options.url).includes('/Providers')) return Promise.resolve(discoverFixture.providers);
+                if (String(options.url).includes('/Discover')) { const index=calls.ajax.filter(call=>String(call.url).includes('/Discover')).length-1; const page=discoverFixture.pages[index] || {Results:[]}; return typeof page === 'function' ? page() : Promise.resolve(page); }
                 if (options.type === 'POST') return Promise.resolve({ Success: true, Message: 'Request accepted by Seerr.' });
                 if (String(options.url).includes('Seerr/Test')) return typeof checkResponse === 'function' ? checkResponse() : Promise.resolve(checkResponse);
                 if (String(options.url).includes('Seerr/Details')) return details === null ? Promise.reject(new Error('status offline')) : Promise.resolve(details);
@@ -63,6 +65,38 @@ async function render(host, results, fail = false, details = {State: "notRequest
     return { result: elements.get('.justWatchResults'), button: elements.get('.justWatchSearchButton'), elements, events, calls, page, cards };
 }
 for (const host of ['Emby', 'Jellyfin']) {
+    test(`${host}: Discover filters upstream, pages without duplicates, and never auto-requests`, async () => {
+        const first={Id:'tm1',TmdbId:1,Title:'One',ObjectType:'MOVIE',Country:'CA',CanRequestInSeerr:true,Offers:[]};
+        const fixture={providers:[{Id:'8',Code:'nfx',Name:'Netflix'}],pages:[{Results:[first],NextCursor:'page2',HasNextPage:true},{Results:[first,{Id:'tm2',Title:'Two',Country:'CA',Offers:[]}],HasNextPage:false}]};
+        const {page,elements,events,calls,result}=await render(host,[],false,undefined,async()=>({Options:{Country:'CA'}}),undefined,fixture);
+        assert.equal(elements.get('.justWatchDiscoverCountry').value,'CA');
+        events['.justWatchDiscoverTabclick']();
+        await new Promise(resolve=>setImmediate(resolve));
+        assert.equal(calls.ajax.filter(call=>String(call.url).includes('/Discover')).length,0,'opening Discover loads only services');
+        assert.match(elements.get('.justWatchDiscoverServices').innerHTML,/Netflix/);
+        events['.justWatchDiscoverServiceschange']({target:{dataset:{discoverService:'nfx'},checked:true}});
+        events['.justWatchDiscoverBrowseclick']();
+        await new Promise(resolve=>setImmediate(resolve));
+        assert.equal(calls.searches.at(-1).providers,'nfx');
+        assert.equal(calls.searches.at(-1).country,'CA');
+        assert.match(result.innerHTML,/Watch options/);
+        assert.equal(elements.get('.justWatchDiscoverMore').hidden,false);
+        events['.justWatchDiscoverMoreclick']();
+        await new Promise(resolve=>setImmediate(resolve));
+        assert.equal(calls.searches.at(-1).after,'page2');
+        assert.equal(page.discoverRows.length,2);
+        assert.equal(elements.get('.justWatchDiscoverMore').hidden,true);
+        assert.equal(calls.ajax.some(call=>call.type==='POST'),false);
+        events['.justWatchDiscoverClearclick']();
+        assert.equal(page.discoverRows.length,0);assert.equal(result.innerHTML,'');
+    });
+    test(`${host}: Discover failure is visible and controls recover`, async () => {
+        const {elements,events}=await render(host,[],false,undefined,undefined,undefined,{providers:[],pages:[()=>Promise.reject(new Error('offline'))]});
+        events['.justWatchDiscoverTabclick']();await new Promise(resolve=>setImmediate(resolve));
+        events['.justWatchDiscoverBrowseclick']();await new Promise(resolve=>setImmediate(resolve));
+        assert.match(elements.get('.justWatchDiscoverNote').textContent,/could not load titles/);
+        assert.equal(elements.get('.justWatchDiscoverBrowse').disabled,false);
+    });
     test(`${host}: check errors distinguish authorization, missing routes, and invalid responses`, async () => {
         for(const [response,expected] of [
             [()=>Promise.reject({status:403,responseText:'private-key'}),/administrator/],

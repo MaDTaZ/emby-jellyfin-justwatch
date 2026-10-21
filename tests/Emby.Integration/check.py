@@ -53,5 +53,12 @@ try:
     assert call('JustWatch/Seerr/Test',token=None)['httpStatus']==401
     search=call('JustWatch/Search?Title=Arrival&Year=2016&MediaType=movie&Country=CA')
     assert search['Results'] and search['Results'][0]['Country']=='CA'
+    services=call('JustWatch/Providers?Country=CA')
+    assert any(service['Code']=='nfx' for service in services)
+    browse=call('JustWatch/Discover?Country=CA&MediaType=movie&Providers=nfx')
+    assert browse['Results'] and browse['Country']=='CA'
+    import sys
+    if '--save-preview' in sys.argv: Path('/tmp/wtw-discover-live-preview.json').write_text(json.dumps(browse))
+    print('Authenticated Discover providers and Netflix CA browse passed.')
     print('Authenticated Emby checks passed: JSON connection success/auth failure, status, fake request, anonymous rejection, and live title search. No real Seerr requests.')
 finally: server.shutdown();server.server_close()

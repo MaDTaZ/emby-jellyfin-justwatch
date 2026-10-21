@@ -47,6 +47,7 @@ define([], function () {
             setField('.justWatchSeerrUrl', config.Options.SeerrUrl || '');
             setField('.justWatchLanguage', config.Options.Language || 'en');
             setField('.justWatchResultLimit', config.Options.ResultLimit || 8);
+            discoverRegions(page, query(page, '.justWatchCountry').value, query(page, '.justWatchAnywhereCountries').value);
             page.settingsLoading = false;
             page.settingsLoaded = true;
             Dashboard.hideLoadingMsg();
@@ -77,6 +78,7 @@ define([], function () {
         }).then(function (result) {
             Dashboard.hideLoadingMsg();
             populateSearchRegions(page, countries.join(','), false);
+            discoverRegions(page, query(page, '.justWatchCountry').value, countries.join(','));
             Dashboard.processPluginConfigurationUpdateResult(result);
         }).catch(function () {
             Dashboard.hideLoadingMsg();
@@ -174,7 +176,7 @@ define([], function () {
     }
 
     function applyProviderFilters(page) {
-        const selected = page.selectedProviders;
+        const selected = page.dataset.justWatchMode === 'discover' ? new Map() : page.selectedProviders;
         const container = query(page, '.justWatchResults');
         container.querySelectorAll('.jw-result').forEach(function (card) {
             let visible = 0;
@@ -294,7 +296,7 @@ define([], function () {
         const failed = response.failedcountries || [];
         const warning = failed.length ? '<p class="jw-warning" role="status">Could not check ' + escapeHtml(failed.join(', ')) + '. Results below cover only successful countries. Try searching the unavailable countries again.</p>' : '';
         page.providerResults = results || [];
-        renderProviderFilters(page, results);
+        if (page.dataset.justWatchMode !== 'discover') renderProviderFilters(page, results);
         const container = query(page, '.justWatchResults');
         if (!results || !results.length) {
             container.innerHTML = warning + '<p class="jw-empty">No matching titles found. Try another title or omit the year.</p>';
@@ -321,7 +323,7 @@ define([], function () {
                 + '<div class="jw-actions">'
                 + (canRequest ? '<button type="button" class="jw-source jw-seerr jw-direct-request" disabled data-seerr-id="' + Number(item.tmdbid) + '" data-seerr-type="' + type + '">' + (type === 'tv' ? 'Choose seasons' : 'Request') + '</button>' : '')
                 + (seerrHref ? '<a class="jw-source jw-seerr" target="_blank" rel="noopener noreferrer" href="' + seerrHref + '">' + (canRequest ? 'Open in Seerr' : 'Request in Seerr') + ' <span aria-hidden="true">↗</span></a>' : '')
-                + '</div></header><div class="jw-request-panel" role="status" aria-live="polite"></div>' + offers + '<p class="jw-empty jw-filter-empty" hidden>No offers from your selected providers for this title. Choose All providers to see other options, or request it through Seerr.</p><p class="jw-note">Availability and prices can change. Confirm details with the provider.</p></article>';
+                + '</div></header><div class="jw-request-panel" role="status" aria-live="polite"></div>' + (page.dataset.justWatchMode === 'discover' ? '<details class="jw-discover-offers"><summary>Watch options</summary>' + offers + '</details>' : offers) + '<p class="jw-empty jw-filter-empty" hidden>No offers from your selected providers for this title. Choose All providers to see other options, or request it through Seerr.</p><p class="jw-note">Availability and prices can change. Confirm details with the provider.</p></article>';
         }).join('');
         applyProviderFilters(page);
         refreshSeerrStatuses(page);
@@ -391,7 +393,99 @@ define([], function () {
         });
     }
 
+    function discoverRegions(page, country, countries) {
+        const codes = Array.from(new Set([country || 'US'].concat(String(countries || 'CA,US,GB,AU').split(',')))).map(function (code) { return code.trim().toUpperCase(); }).filter(function (code) { return /^[A-Z]{2}$/.test(code); });
+        const select = query(page, '.justWatchDiscoverCountry');
+        const previous = page.discoverRegionsLoaded ? select.value : null;
+        page.discoverRegionsLoaded = true;
+        select.innerHTML = codes.map(function (code) { return '<option value="' + code + '">' + code + '</option>'; }).join('');
+        select.value = codes.indexOf(previous) >= 0 ? previous : country || codes[0];
+        if (page.dataset.justWatchMode === 'discover' && previous !== select.value) { clearSearch(page); loadDiscoverServices(page); }
+    }
+
+    function drawDiscoverServices(page) {
+        const filter = query(page, '.justWatchDiscoverServiceFilter').value.trim().toLowerCase();
+        const selected = page.discoverSelection || new Set();
+        query(page, '.justWatchDiscoverServices').innerHTML = (page.discoverCatalog || []).filter(function (service) { return service.name.toLowerCase().indexOf(filter) >= 0; }).map(function (service) {
+            return '<label class="jw-discover-service"><input type="checkbox" data-discover-service="' + escapeHtml(service.code) + '"' + (selected.has(service.code) ? ' checked' : '') + '> ' + escapeHtml(service.name) + '</label>';
+        }).join('') || '<p>No matching services.</p>';
+        query(page, '.justWatchDiscoverServiceCount').textContent = selected.size ? selected.size + (selected.size === 1 ? ' selected service' : ' selected services') : 'All subscription services';
+    }
+
+    function loadDiscoverServices(page) {
+        const generation = (page.discoverCatalogGeneration || 0) + 1;
+        page.discoverCatalogGeneration = generation;
+        page.discoverCatalogLoading = true;
+        query(page, '.justWatchDiscoverServices').textContent = 'Loading services…';
+        return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('JustWatch/Providers', { country: query(page, '.justWatchDiscoverCountry').value || 'US' }), dataType: 'json' }).then(function (raw) {
+            if (generation !== page.discoverCatalogGeneration) return;
+            page.discoverCatalog = (raw || []).map(normalize);
+            // Reuse provider preferences where IDs match; choices here remain in page memory.
+            page.discoverSelection = new Set(page.discoverCatalog.filter(function (service) { return page.selectedProviders && page.selectedProviders.has(service.id); }).slice(0, 8).map(function (service) { return service.code; }));
+            page.discoverCatalogLoading = false;
+            drawDiscoverServices(page);
+        }).catch(function () {
+            if (generation !== page.discoverCatalogGeneration) return;
+            page.discoverCatalogLoading = false;
+            page.discoverCatalog = [];
+            query(page, '.justWatchDiscoverServices').textContent = 'Could not load services. Choose Discover again to retry.';
+        });
+    }
+
+    function showBrowseMode(page, mode) {
+        clearSearch(page);
+        page.dataset.justWatchMode = mode;
+        query(page, '.justWatchSearchControls').hidden = mode === 'discover';
+        query(page, '.justWatchDiscoverControls').hidden = mode !== 'discover';
+        query(page, '.justWatchSearchTab').setAttribute('aria-pressed', String(mode !== 'discover'));
+        query(page, '.justWatchDiscoverTab').setAttribute('aria-pressed', String(mode === 'discover'));
+        query(page, '.justWatchResults').className = 'justWatchResults' + (mode === 'discover' ? ' jw-discover-results' : '');
+        if (mode === 'discover') loadDiscoverServices(page);
+    }
+
+    function browseDiscover(page, more) {
+        if (page.discoverCatalogLoading) { query(page, '.justWatchDiscoverNote').textContent = 'Wait for the service list to finish loading.'; return; }
+        const country = query(page, '.justWatchDiscoverCountry').value || 'US';
+        const type = query(page, '.justWatchDiscoverType').value;
+        const providers = Array.from(page.discoverSelection || []);
+        if (providers.length > 8) { Dashboard.alert('Choose at most eight services.'); return; }
+        const signature = JSON.stringify([country, type, providers.slice().sort()]);
+        if (more && signature !== page.discoverSignature) { more = false; }
+        if (!more) { page.discoverRows = []; page.discoverCursor = null; }
+        page.discoverSignature = signature;
+        if (!more) query(page, '.justWatchDiscoverMore').hidden = true;
+        const generation = (page.searchGeneration || 0) + 1;
+        page.searchGeneration = generation;
+        query(page, '.justWatchDiscoverBrowse').disabled = true;
+        query(page, '.justWatchDiscoverMore').disabled = true;
+        query(page, '.justWatchDiscoverNote').textContent = 'Finding popular subscription titles in ' + country + '…';
+        return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('JustWatch/Discover', { country: country, mediaType: type || null, providers: providers.join(','), after: more ? page.discoverCursor : null }), dataType: 'json' }).then(function (raw) {
+            if (generation !== page.searchGeneration) return;
+            const response = normalize(raw);
+            const seen = new Set((page.discoverRows || []).map(function (item) { const value = normalize(item); return value.id || value.objecttype + ':' + value.tmdbid; }));
+            (response.results || []).forEach(function (item) { const value = normalize(item); const key = value.id || value.objecttype + ':' + value.tmdbid; if (!seen.has(key)) { seen.add(key); page.discoverRows.push(item); } });
+            page.discoverRows = page.discoverRows.slice(0, 200);
+            page.discoverCursor = response.nextcursor;
+            query(page, '.justWatchDiscoverMore').hidden = !response.hasnextpage || !response.nextcursor || page.discoverRows.length >= 200;
+            renderResults(page, page.discoverRows);
+            query(page, '.justWatchDiscoverNote').textContent = page.discoverRows.length ? 'Showing ' + page.discoverRows.length + (page.discoverRows.length === 1 ? ' popular title in ' : ' popular titles in ') + country + '. Subscription availability only; open Watch options for offers.' : 'No subscription titles found for these services. Try other services or another country.';
+        }).catch(function () {
+            if (generation !== page.searchGeneration) return;
+            query(page, '.justWatchDiscoverNote').textContent = 'Discover could not load titles. Try again or change your country and services.';
+        }).then(function () {
+            if (generation !== page.searchGeneration) return;
+            query(page, '.justWatchDiscoverBrowse').disabled = false;
+            query(page, '.justWatchDiscoverMore').disabled = false;
+        });
+    }
+
     function clearSearch(page) {
+        page.discoverRows = [];
+        page.discoverCursor = null;
+        query(page, '.justWatchDiscoverMore').hidden = true;
+        query(page, '.justWatchDiscoverMore').disabled = false;
+        query(page, '.justWatchDiscoverBrowse').disabled = false;
+        query(page, '.justWatchDiscoverNote').textContent = '';
         page.searchGeneration = (page.searchGeneration || 0) + 1;
         page.seerrStatusGeneration = (page.seerrStatusGeneration || 0) + 1;
         page.providerResults = [];
@@ -458,6 +552,23 @@ define([], function () {
             query(page, '.justWatchSettingsForm').addEventListener('change', rememberSettingsEdit);
             page.addEventListener('pagehide', function () { clearSearch(page); Dashboard.hideLoadingMsg(); });
             loadProviderFilters(page);
+            query(page, '.justWatchSearchTab').addEventListener('click', function () { showBrowseMode(page, 'search'); });
+            query(page, '.justWatchDiscoverTab').addEventListener('click', function () { showBrowseMode(page, 'discover'); });
+            query(page, '.justWatchDiscoverCountry').addEventListener('change', function () { clearSearch(page); loadDiscoverServices(page); });
+            query(page, '.justWatchDiscoverType').addEventListener('change', function () { clearSearch(page); });
+            query(page, '.justWatchDiscoverServiceFilter').addEventListener('input', function () { drawDiscoverServices(page); });
+            query(page, '.justWatchDiscoverServices').addEventListener('change', function (event) {
+                const code = event.target.dataset.discoverService;
+                if (!code) return;
+                if (event.target.checked) { if (page.discoverSelection.size >= 8) { event.target.checked = false; Dashboard.alert('Choose at most eight services.'); return; } page.discoverSelection.add(code); }
+                else page.discoverSelection.delete(code);
+                clearSearch(page);
+                query(page, '.justWatchDiscoverServiceCount').textContent = page.discoverSelection.size ? page.discoverSelection.size + (page.discoverSelection.size === 1 ? ' selected service' : ' selected services') : 'All subscription services';
+            });
+            query(page, '.justWatchDiscoverAll').addEventListener('click', function () { page.discoverSelection = new Set(); clearSearch(page); drawDiscoverServices(page); });
+            query(page, '.justWatchDiscoverBrowse').addEventListener('click', function () { browseDiscover(page, false); });
+            query(page, '.justWatchDiscoverMore').addEventListener('click', function () { browseDiscover(page, true); });
+            query(page, '.justWatchDiscoverClear').addEventListener('click', function () { clearSearch(page); });
             query(page, '.justWatchTestSeerr').addEventListener('click', function () { runSettingsCheck(page, this, 'JustWatch/Seerr/Test', 'GET', '.justWatchSeerrFeedback'); });
             query(page, '.justWatchProviderFilters').addEventListener('click', function (event) { handleProviderFilter(page, event); });
             query(page, '.justWatchSettingsForm').addEventListener('submit', function (event) {

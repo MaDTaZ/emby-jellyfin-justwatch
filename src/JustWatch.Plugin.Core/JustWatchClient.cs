@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace JustWatch.Plugin.Core
 {
-    public sealed class JustWatchClient : IJustWatchClient
+    public sealed partial class JustWatchClient : IJustWatchClient
     {
         private readonly HttpClient _httpClient;
         private readonly JustWatchOptions _options;

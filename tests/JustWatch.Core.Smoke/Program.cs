@@ -65,6 +65,7 @@ handler.FailCountries = new[]{"CA","US","GB"};
 await ExpectFailure(()=>anywhereClient.SearchAcrossCountriesAsync("Arrival",2016,"movie",default));
 handler.FailCountries = Array.Empty<string>();
 await SeerrSmoke.Run();
+await DiscoverSmoke.Run();
 if (args.Contains("--live"))
 {
     using var liveHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
@@ -72,6 +73,12 @@ if (args.Contains("--live"))
         .SearchAcrossCountriesAsync("Arrival", 2016, "movie", default);
     Check(live.Any(result => result.Country == "CA") && live.Any(result => result.Country == "US"), "live CA and US results");
     Check(live.All(result => result.TmdbId > 0), "live matched TMDB IDs");
+    var discoveryClient = new JustWatchClient(liveHttp,new JustWatchOptions());
+    var services = await discoveryClient.ProvidersAsync("CA",default);
+    var netflix = services.Single(service=>service.Code=="nfx");
+    var browse = await discoveryClient.DiscoverAsync("CA","movie","nfx",null,default);
+    Check(browse.Results.Count>0 && browse.Results.All(result=>result.Offers.Any(offer=>offer.ProviderId==netflix.Id && offer.MonetizationType=="FLATRATE")),"live Netflix CA discovery");
+    Console.WriteLine("Live Discover Netflix CA passed: "+browse.Results.Count+" titles.");
     Console.WriteLine("Live Anywhere CA/US search passed: " + live.Count + " country-labeled results.");
 }
 Console.WriteLine("Shared client and direct Seerr request checks passed.");

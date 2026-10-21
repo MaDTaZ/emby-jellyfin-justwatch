@@ -89,7 +89,7 @@ The default build keeps SDK 4.8.10. To build against a different published SDK, 
 
 ## Release packaging
 
-Current Emby and Jellyfin 12 assemblies use version 0.1.17.0; Jellyfin 10.10.7 uses 0.1.16.1 so newer servers select the .NET 10 build. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
+Current Emby and Jellyfin 12 assemblies use version 0.1.18.0; Jellyfin 10.10.7 uses 0.1.17.1 so newer servers select the .NET 10 build. Build the stable Emby project into `artifacts/emby-stable`, Jellyfin into `artifacts/jellyfin`, and the exact-release Emby beta into `artifacts/emby-4.11.0.8` using `dotnet build -c Release -o DIRECTORY` with the corresponding project and properties described above. Then run:
 
 ```bash
 python3 scripts/package-release.py
@@ -213,3 +213,11 @@ Validation: 43 dashboard checks include reentry without re-fetching settings and
 Authenticated Emby service calls returned HTTP 204 without a JSON body when handlers returned Task<DTO>. Handlers now return Task<object>, which the Emby service dispatcher serializes correctly. This applies to title search, connection test, Seerr details, and requests. Settings-check feedback distinguishes authorization errors, missing routes, and empty/invalid responses instead of the old generic message; upstream response bodies are not displayed.
 
 The failure was reproduced as an authenticated administrator in the official isolated Emby 4.11.0.8 server. After the fix, a loopback fake Seerr service verified JSON connection success and unauthorized-key failure, status lookup, a simulated movie request, and anonymous rejection. A live JustWatch title search returned a populated JSON envelope. No real Seerr requests were sent. The disposable test script is tests/Emby.Integration/check.py; it refuses to run unless the test instance uses the exact loopback Seerr URL and dummy key.
+
+## Discover (0.1.18)
+
+Discover is a separate mode beside Search in Where to Watch for Jellyfin and Emby. Pick one configured country, movies/series/both, and up to eight services or all subscription services. The regional provider list comes from JustWatch and is cached server-side for one hour with a bounded country cache. Provider selections are validated against that catalog, sent upstream as package codes, and confirmed against returned subscription offers so an invalid or ignored filter cannot silently show unrelated services.
+
+Browse fetches 12 popular titles per page, uses opaque cursors, de-duplicates repeated titles, and stops the session at 200 cards. Load more is explicit. Cards expose existing Seerr status and request controls; Watch options expands provider offers and links. Browsing does not auto-request media. Saved provider preferences seed selections where provider IDs match; new Discover choices and browsing results remain in page memory and clear on navigation. Search remains available.
+
+The first version focuses on subscription offers (FLATRATE), not rental, purchase or free/ad-supported discovery. Those offers can still appear under a title's Watch options. Provider names in the service catalog can include rental-only stores, which yield no subscription matches. Both new endpoints require an authenticated host session; direct Seerr requests remain administrator-only. No poster/library badge feature was added.

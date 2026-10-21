@@ -88,6 +88,20 @@
 .justWatchConfigurationPage .jw-region-link { color: #00a4dc; }
 .justWatchConfigurationPage .jw-warning { padding: 16px; border: 1px solid rgba(225,175,70,.4); border-radius: 10px; background: rgba(225,175,70,.08); line-height: 1.5; }
 .justWatchConfigurationPage .jw-maintenance { margin: 0 22px 22px; padding-top: 12px; border-top: 1px solid rgba(140,150,165,.22); max-width: 740px; }
+.justWatchConfigurationPage .jw-page-tabs { display: flex; gap: 10px; margin-bottom: 24px; }
+.justWatchConfigurationPage .jw-discover-controls { display: grid; grid-template-columns: 1fr 1fr; max-width: 650px; gap: 20px; }
+.justWatchConfigurationPage .jw-discover-service-picker { padding: 16px; border: 1px solid rgba(140,150,165,.25); border-radius: 10px; margin-bottom: 20px; }
+.justWatchConfigurationPage .jw-discover-service-picker > summary { cursor: pointer; margin-bottom: 12px; }
+.justWatchConfigurationPage .jw-discover-services { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 10px; max-height: 240px; overflow: auto; margin-top: 16px; }
+.justWatchConfigurationPage .jw-discover-service { display: flex; align-items: center; gap: 8px; padding: 5px; }
+.justWatchConfigurationPage .jw-discover-actions { display: flex; gap: 10px; }
+.justWatchConfigurationPage .jw-discover-results { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,320px),1fr)); gap: 18px; align-items: start; }
+.justWatchConfigurationPage .jw-discover-results .jw-result { margin: 0; padding: 20px; min-width: 0; }
+.justWatchConfigurationPage .jw-discover-results .jw-result-header { flex-direction: column; align-items: stretch; }
+.justWatchConfigurationPage .jw-discover-results .jw-result h3 { font-size: 1.25em; }
+.justWatchConfigurationPage .jw-discover-results .jw-provider-grid { grid-template-columns: 1fr; }
+.justWatchConfigurationPage .jw-discover-offers { margin-top: 18px; }
+.justWatchConfigurationPage .jw-discover-offers > summary { cursor: pointer; color: #00a4dc; }
 </style>
 
   <div data-role="content">
@@ -98,6 +112,11 @@
       </header>
 
       <div class="verticalSection jw-search-section">
+        <div class="jw-page-tabs" aria-label="Browse mode">
+          <button type="button" class="jw-filter justWatchSearchTab" aria-pressed="true">Search</button>
+          <button type="button" class="jw-filter justWatchDiscoverTab" aria-pressed="false">Discover</button>
+        </div>
+        <div class="justWatchSearchControls">
         <h3>Find something to watch</h3>
         <div class="jw-search-grid">
         <div class="inputContainer">
@@ -123,9 +142,26 @@
           <button is="emby-button" type="button" class="raised justWatchClearButton"><span>Clear</span></button>
         </div>
         </div>
+        </div>
+        <div class="justWatchDiscoverControls" hidden>
+          <h3>Discover something to watch</h3>
+          <p class="jw-intro">Browse popular titles included with subscription services. Pick a country and up to eight services, or browse them all.</p>
+          <div class="jw-discover-controls">
+            <div class="selectContainer"><select is="emby-select" class="justWatchDiscoverCountry" label="Country"><option value="US">US</option></select></div>
+            <div class="selectContainer"><select is="emby-select" class="justWatchDiscoverType" label="Type"><option value="">Movies &amp; series</option><option value="movie">Movies</option><option value="series">Series</option></select></div>
+          </div>
+          <details class="jw-discover-service-picker"><summary>Streaming services · <span class="justWatchDiscoverServiceCount">All subscription services</span></summary>
+            <input is="emby-input" class="justWatchDiscoverServiceFilter" label="Find a service" placeholder="Netflix, Prime Video…" />
+            <button type="button" class="jw-filter justWatchDiscoverAll">All services</button>
+            <div class="justWatchDiscoverServices jw-discover-services"></div>
+          </details>
+          <div class="jw-discover-actions"><button is="emby-button" type="button" class="raised button-submit justWatchDiscoverBrowse">Browse titles</button><button is="emby-button" type="button" class="raised justWatchDiscoverClear">Clear</button></div>
+          <p class="justWatchDiscoverNote" role="status" aria-live="polite"></p>
+        </div>
         <div class="justWatchProviderFilters" aria-label="Provider filters"></div>
         <div class="justWatchResults" role="status" aria-live="polite" style="margin-top:1.5em;"></div>
       </div>
+      <p><button is="emby-button" type="button" class="raised justWatchDiscoverMore" hidden>Load more titles</button></p>
       <details class="jw-settings">
         <summary>Settings <span>Region, language &amp; Seerr</span></summary>
       <form class="justWatchSettingsForm">
