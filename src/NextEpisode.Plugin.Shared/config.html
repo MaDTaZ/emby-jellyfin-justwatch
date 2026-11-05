@@ -7,7 +7,7 @@
         <div class="checkboxContainer"><label><input type="checkbox" name="enabled"> Enable sync</label></div>
         <div class="inputContainer"><label>Playback user <select name="user" required></select></label></div>
         <div class="inputContainer"><label>Next Episode profile username <input name="username" type="text" required autocapitalize="none" autocomplete="off"></label></div>
-        <div class="inputContainer"><label>Next Episode password <input name="password" type="password" autocomplete="new-password"></label></div>
+        <div class="inputContainer"><label>Next Episode password <input name="password" type="password" autocomplete="new-password" aria-describedby="nextEpisodePasswordStatus"></label> <span id="nextEpisodePasswordStatus" class="password-status" role="status"></span></div>
         <p>Enter a Next Episode password, including for accounts linked to Google or Apple. Leave this field blank to keep the saved password. The server stores it in the plugin configuration.</p>
         <button type="submit" class="raised button-submit">Save</button>
       </form>

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <EmbySdkVersion Condition="'$(EmbySdkVersion)' == ''">4.8.10</EmbySdkVersion>
+    <AssemblyName>Emby.Plugin.NextEpisode</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Memory" Version="4.6.3" />
+    <PackageReference Include="System.Text.Json" Version="5.0.2" />
+    <PackageReference Include="MediaBrowser.Server.Core" Version="$(EmbySdkVersion)" Condition="'$(EmbyReferenceDirectory)' == ''" />
+    <PackageReference Include="MediaBrowser.Common" Version="$(EmbySdkVersion)" Condition="'$(EmbyReferenceDirectory)' == ''" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(EmbyReferenceDirectory)' != ''">
+    <Reference Include="MediaBrowser.Controller"><HintPath>$(EmbyReferenceDirectory)/MediaBrowser.Controller.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="MediaBrowser.Common"><HintPath>$(EmbyReferenceDirectory)/MediaBrowser.Common.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="MediaBrowser.Model"><HintPath>$(EmbyReferenceDirectory)/MediaBrowser.Model.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+  <PropertyGroup>
+    <Version>0.1.1</Version>
+    <AssemblyVersion>0.1.1.0</AssemblyVersion>
+    <DefineConstants>$(DefineConstants);EMBY</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../NextEpisode.Plugin.Shared/*.cs" Link="%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../NextEpisode.Plugin.Shared/config.html" LogicalName="Emby.Plugin.NextEpisode.config.html" />
+    <EmbeddedResource Include="config.js" LogicalName="Emby.Plugin.NextEpisode.config.js" />
+  </ItemGroup>
+</Project>

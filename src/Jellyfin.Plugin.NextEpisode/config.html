@@ -7,7 +7,7 @@
         <div class="checkboxContainer"><label><input type="checkbox" name="enabled"> Enable sync</label></div>
         <div class="inputContainer"><label>Playback user <select name="user" required></select></label></div>
         <div class="inputContainer"><label>Next Episode profile username <input name="username" type="text" required autocapitalize="none" autocomplete="off"></label></div>
-        <div class="inputContainer"><label>Next Episode password <input name="password" type="password" autocomplete="new-password"></label></div>
+        <div class="inputContainer"><label>Next Episode password <input name="password" type="password" autocomplete="new-password" aria-describedby="nextEpisodePasswordStatus"></label> <span id="nextEpisodePasswordStatus" class="password-status" role="status"></span></div>
         <p>Enter a Next Episode password, including for accounts linked to Google or Apple. Leave this field blank to keep the saved password. The server stores it in the plugin configuration.</p>
         <button type="submit" class="raised button-submit">Save</button>
       </form>
@@ -20,6 +20,12 @@
         var form = page.querySelector('form');
         var fields = form.elements;
         var ready = false;
+        var passwordSaved = false;
+        function showSavedPassword(saved) {
+            fields.password.value = '';
+            fields.password.placeholder = saved ? '••••••••' : '';
+            form.querySelector('.password-status').textContent = saved ? 'Password saved' : '';
+        }
         var save = form.querySelector('button[type=submit]');
         function load() {
             ready = false;
@@ -31,7 +37,7 @@
                 values[1].forEach(function (user) { fields.user.add(new Option(user.Name, user.Id)); });
                 fields.user.value = config.PlaybackUserId || '';
                 fields.username.value = config.Username || '';
-                fields.password.value = '';
+                showSavedPassword(!!config.Password);
                 fields.enabled.checked = !!config.Enabled;
                 ready = true;
                 save.disabled = false;
@@ -50,9 +56,10 @@
                 if (config.Enabled && (!config.Password || !config.Username || config.Username.indexOf('@') >= 0)) {
                     throw new Error('Enter your Next Episode profile username and password to enable sync.');
                 }
+                passwordSaved = !!config.Password;
                 return ApiClient.updatePluginConfiguration(pluginId, config);
             }).then(function (result) {
-                fields.password.value = '';
+                showSavedPassword(passwordSaved);
                 Dashboard.processPluginConfigurationUpdateResult(result);
             }).catch(function (error) {
                 Dashboard.alert(error instanceof Error ? error.message : 'Could not save settings.');

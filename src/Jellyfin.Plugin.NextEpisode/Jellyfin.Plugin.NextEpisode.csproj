@@ -16,8 +16,8 @@
     </PackageReference>
   </ItemGroup>
   <PropertyGroup>
-    <Version>0.1.0</Version>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <Version>0.1.1</Version>
+    <AssemblyVersion>0.1.1.0</AssemblyVersion>
     <DefineConstants>$(DefineConstants);JELLYFIN</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
