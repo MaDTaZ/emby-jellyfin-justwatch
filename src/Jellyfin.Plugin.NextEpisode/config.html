@@ -1,0 +1,65 @@
+<div id="NextEpisodeSync" data-role="page" class="page type-interior pluginConfigurationPage">
+  <div data-role="content">
+    <div class="content-primary">
+      <h2>Next Episode Sync</h2>
+      <p>Send TV episodes to Next Episode at 90% playback for one server user.</p>
+      <form>
+        <div class="checkboxContainer"><label><input type="checkbox" name="enabled"> Enable sync</label></div>
+        <div class="inputContainer"><label>Playback user <select name="user" required></select></label></div>
+        <div class="inputContainer"><label>Next Episode profile username <input name="username" type="text" required autocapitalize="none" autocomplete="off"></label></div>
+        <div class="inputContainer"><label>Next Episode password <input name="password" type="password" autocomplete="new-password"></label></div>
+        <p>Enter a Next Episode password, including for accounts linked to Google or Apple. Leave this field blank to keep the saved password. The server stores it in the plugin configuration.</p>
+        <button type="submit" class="raised button-submit">Save</button>
+      </form>
+    </div>
+  </div>
+  <script type="text/javascript">
+(function () {
+    'use strict';
+    function init(page, pluginId) {
+        var form = page.querySelector('form');
+        var fields = form.elements;
+        var ready = false;
+        var save = form.querySelector('button[type=submit]');
+        function load() {
+            ready = false;
+            save.disabled = true;
+            Promise.all([ApiClient.getPluginConfiguration(pluginId), ApiClient.getUsers()]).then(function (values) {
+                var config = values[0];
+                fields.user.textContent = '';
+                fields.user.add(new Option('Choose a server user', ''));
+                values[1].forEach(function (user) { fields.user.add(new Option(user.Name, user.Id)); });
+                fields.user.value = config.PlaybackUserId || '';
+                fields.username.value = config.Username || '';
+                fields.password.value = '';
+                fields.enabled.checked = !!config.Enabled;
+                ready = true;
+                save.disabled = false;
+            }).catch(function () { Dashboard.alert('Could not load Next Episode Sync settings.'); });
+        }
+        page.addEventListener('pageshow', load);
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            if (!ready || save.disabled) return;
+            save.disabled = true;
+            ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                config.Enabled = fields.enabled.checked;
+                config.PlaybackUserId = fields.user.value;
+                config.Username = fields.username.value.trim();
+                if (fields.password.value) config.Password = fields.password.value;
+                if (config.Enabled && (!config.Password || !config.Username || config.Username.indexOf('@') >= 0)) {
+                    throw new Error('Enter your Next Episode profile username and password to enable sync.');
+                }
+                return ApiClient.updatePluginConfiguration(pluginId, config);
+            }).then(function (result) {
+                fields.password.value = '';
+                Dashboard.processPluginConfigurationUpdateResult(result);
+            }).catch(function (error) {
+                Dashboard.alert(error instanceof Error ? error.message : 'Could not save settings.');
+            }).finally(function () { save.disabled = false; });
+        });
+    }
+    init(document.querySelector('#NextEpisodeSync'), 'f48e5e15-081c-4081-b680-1513264c584b');
+})();
+  </script>
+</div>

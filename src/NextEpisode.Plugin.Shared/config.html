@@ -1,0 +1,16 @@
+<div id="NextEpisodeSync" data-role="page" class="page type-interior pluginConfigurationPage" data-controller="__plugin/NextEpisodeSyncConfig">
+  <div data-role="content">
+    <div class="content-primary">
+      <h2>Next Episode Sync</h2>
+      <p>Send TV episodes to Next Episode at 90% playback for one server user.</p>
+      <form>
+        <div class="checkboxContainer"><label><input type="checkbox" name="enabled"> Enable sync</label></div>
+        <div class="inputContainer"><label>Playback user <select name="user" required></select></label></div>
+        <div class="inputContainer"><label>Next Episode profile username <input name="username" type="text" required autocapitalize="none" autocomplete="off"></label></div>
+        <div class="inputContainer"><label>Next Episode password <input name="password" type="password" autocomplete="new-password"></label></div>
+        <p>Enter a Next Episode password, including for accounts linked to Google or Apple. Leave this field blank to keep the saved password. The server stores it in the plugin configuration.</p>
+        <button type="submit" class="raised button-submit">Save</button>
+      </form>
+    </div>
+  </div>
+</div>

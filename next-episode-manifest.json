@@ -1,0 +1,28 @@
+[
+  {
+    "guid": "f48e5e15-081c-4081-b680-1513264c584b",
+    "name": "Next Episode Sync",
+    "description": "Send watched TV episodes from Jellyfin to Next Episode at 90% playback.",
+    "overview": "Automatically send watched episodes for a selected Jellyfin user.",
+    "owner": "MaDTaZ",
+    "category": "General",
+    "versions": [
+      {
+        "version": "0.1.0.0",
+        "changelog": "Send TV episodes to Next Episode when the selected user reaches 90% playback.",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/next-episode-v0.1.0/NextEpisodeSync-Jellyfin-12.0-rc7.zip",
+        "checksum": "139c378494c1611a72eed4a992fa925a",
+        "timestamp": "2026-11-05T00:00:00Z"
+      },
+      {
+        "version": "0.1.0.0",
+        "changelog": "Send TV episodes to Next Episode when the selected user reaches 90% playback.",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/MaDTaZ/emby-jellyfin-justwatch/releases/download/next-episode-v0.1.0/NextEpisodeSync-Jellyfin-10.10.7.zip",
+        "checksum": "ea7293e532967291dc8aad3e4ae1b99d",
+        "timestamp": "2026-11-05T00:00:00Z"
+      }
+    ]
+  }
+]

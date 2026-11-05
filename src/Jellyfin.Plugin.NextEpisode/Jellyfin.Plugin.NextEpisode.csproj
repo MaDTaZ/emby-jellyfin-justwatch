@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <JellyfinSdkVersion Condition="'$(JellyfinSdkVersion)' == ''">10.10.7</JellyfinSdkVersion>
+    <JellyfinTargetFramework Condition="'$(JellyfinTargetFramework)' == ''">net8.0</JellyfinTargetFramework>
+    <TargetFramework>$(JellyfinTargetFramework)</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Jellyfin.Plugin.NextEpisode</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Jellyfin.Controller" Version="$(JellyfinSdkVersion)">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Jellyfin.Model" Version="$(JellyfinSdkVersion)">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <DefineConstants>$(DefineConstants);JELLYFIN</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../NextEpisode.Plugin.Shared/*.cs" Link="%(Filename)%(Extension)" />
+    <EmbeddedResource Include="config.html" LogicalName="Jellyfin.Plugin.NextEpisode.config.html" />
+  </ItemGroup>
+</Project>
